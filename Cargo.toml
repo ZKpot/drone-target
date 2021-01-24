@@ -1,0 +1,10 @@
+[package]
+name = "push-it"
+version = "0.1.0"
+authors = ["Nikita Zemtsov <z-nik@ya.ru>"]
+edition = "2018"
+
+
+[dependencies.dotrix]
+git = "https://github.com/lowenware/dotrix"
+rev = "847b6290bc5136a0b428d7baf5cd2493e770540d"
