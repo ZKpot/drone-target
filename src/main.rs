@@ -1,15 +1,15 @@
 mod physics;
+mod drone;
 
 use dotrix::{
     Dotrix,
     assets:: { Texture, Mesh },
-    components:: { SkyBox, Model, Light },
+    components:: { SkyBox, Light },
     ecs::{ Mut, RunLevel, System },
     input::{ ActionMapper, Button, Mapper },
     services::{ Assets, Camera, Frame, Input, World },
     systems::{ camera_control, world_renderer },
-    renderer::transform::Transform,
-    math::{ Vec3, Point3 },
+    math::{ Point3 },
 };
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
         .with_system(System::from(physics::physics_system))
-        .with_system(System::from(player_control))
+        .with_system(System::from(drone::player_control))
         .with_service(Assets::new())
         .with_service(Frame::new())
         .with_service(
@@ -41,12 +41,14 @@ fn main() {
 
 }
 
-fn startup(mut world: Mut<World>, mut assets: Mut<Assets>) {
-    
+fn startup(
+    mut world: Mut<World>,
+    mut assets: Mut<Assets>,
+    mut bodies: Mut<physics::BodiesService>,
+) {
     init_skybox(&mut world, &mut assets);
-    init_player(&mut world, &mut assets);
-    init_light(&mut world);    
-
+    init_players(&mut world, &mut assets, &mut bodies);
+    init_light(&mut world);
 }
 
 fn init_skybox(
@@ -76,26 +78,22 @@ fn init_skybox(
     ]);
 }
 
-fn init_player(
+fn init_players(
     world: &mut World,
     assets: &mut Assets,
+    bodies: &mut physics::BodiesService,
 ) {
     let texture = assets.register::<Texture>("player::texture");
-    let mesh = assets.register::<Mesh>("player::mesh");   
+    let mesh = assets.register::<Mesh>("player::mesh");
 
     assets.import("assets/player/player.gltf");
 
-    let trans = Transform {
-        translate: Vec3::new(0.0, 1.0, 0.0),
-        ..Default::default()
-    };
-
-    // spawn model in the world
-    world.spawn(Some(
-        (
-            Model { mesh, texture, transform: trans, ..Default::default() },
-        ),
-    ));
+    drone::init_drone(
+        world,
+        mesh,
+        texture,
+        drone::Drone::new(Point3::new(0.0, 2.0, 0.0), bodies)
+    );
 }
 
 fn init_light(world: &mut World) {
@@ -110,26 +108,5 @@ impl ActionMapper<Action> for Input {
     fn action_mapped(&self, action: Action) -> Option<&Button> {
         let mapper = self.mapper::<Mapper<Action>>();
         mapper.get_button(action)
-    }
-}
-
-fn player_control(
-    world: Mut<World>,
-    bodies: Mut<physics::BodiesService>,
-) {
-    // Query player entity
-    let query = world.query::<(&mut Model,)>();
-
-    // this loop will run only once, because Player component is assigned to only one entity
-    for (model,) in query {
-
-        let rigid_body = bodies.bodies.get(bodies.handle).unwrap();    
-
-        let pos = rigid_body.position().translation;
-    
-        // apply translation
-        model.transform.translate.x = pos.x;
-        model.transform.translate.y = pos.y;
-        model.transform.translate.z = pos.z;       
     }
 }

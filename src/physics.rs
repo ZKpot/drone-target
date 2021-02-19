@@ -1,6 +1,10 @@
-use rapier3d::na::{Vector3, Isometry3};
-use rapier3d::dynamics::{JointSet, RigidBodySet, IntegrationParameters, BodyStatus, RigidBodyBuilder, RigidBodyHandle};
-use rapier3d::geometry::{BroadPhase, NarrowPhase, ColliderSet};
+use rapier3d::na::{ Vector3, };
+use rapier3d::dynamics::{ 
+    JointSet,
+    RigidBodySet,
+    IntegrationParameters,
+};
+use rapier3d::geometry::{ BroadPhase, NarrowPhase, ColliderSet };
 use rapier3d::pipeline::PhysicsPipeline;
 
 use dotrix::{
@@ -9,23 +13,12 @@ use dotrix::{
 
 pub struct BodiesService {   
     pub bodies: RigidBodySet,
-    pub handle: RigidBodyHandle,
 }
 
 impl Default for BodiesService {
     fn default() -> Self {
-        let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic)
-            .position(Isometry3::new(Vector3::new(1.0, 3.0, 2.0), Vector3::y() * 0.4))
-            .linvel(0.0, 15.0, 0.0)
-            .mass(0.1)
-            .build();
-            
-        let mut body_set = RigidBodySet::new();
-        let handle = body_set.insert(rigid_body);
-
         Self {         
-            bodies: body_set,
-            handle: handle,
+            bodies: RigidBodySet::new(),
         }        
     }
 }
@@ -54,32 +47,6 @@ impl Default for JointsService {
     }
 }
 
-/* 
-pub struct BroadPhaseContext {
-    broad_phase: BroadPhase,
-}
-
-impl Default for BroadPhaseContext {
-    fn default() -> Self {
-        Self {
-            broad_phase: BroadPhase::new(),
-        }
-    }
-}
-
-pub struct NarrowPhaseContext {
-    narrow_phase: NarrowPhase,
-}
-
-impl Default for NarrowPhaseContext {
-    fn default() -> Self {
-        Self {
-            narrow_phase: NarrowPhase::new(),
-        }
-    }
-}
-*/
-
 pub struct PipelineContext {
     pipeline: PhysicsPipeline,
 }
@@ -98,7 +65,7 @@ pub fn physics_system(mut ppl_ctx: Context<PipelineContext>,
                       mut joints: Mut<JointsService>,
                      ) {
     
-    let gravity = Vector3::new(0.0, -9.81, 0.0);
+    let gravity = Vector3::new(0.0, -0.05, 0.0);
     let integration_parameters = IntegrationParameters::default();
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();
