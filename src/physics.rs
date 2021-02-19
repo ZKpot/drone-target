@@ -65,7 +65,7 @@ pub fn physics_system(mut ppl_ctx: Context<PipelineContext>,
                       mut joints: Mut<JointsService>,
                      ) {
     
-    let gravity = Vector3::new(0.0, -0.05, 0.0);
+    let gravity = Vector3::new(0.0, -0.5, 0.0);
     let integration_parameters = IntegrationParameters::default();
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();

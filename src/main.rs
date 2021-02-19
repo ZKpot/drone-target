@@ -6,7 +6,7 @@ use dotrix::{
     assets:: { Texture, Mesh },
     components:: { SkyBox, Light },
     ecs::{ Mut, RunLevel, System },
-    input::{ ActionMapper, Button, Mapper },
+    input::{ ActionMapper, Button, KeyCode, Mapper },
     services::{ Assets, Camera, Frame, Input, World },
     systems::{ camera_control, world_renderer },
     math::{ Point3 },
@@ -45,9 +45,10 @@ fn startup(
     mut world: Mut<World>,
     mut assets: Mut<Assets>,
     mut bodies: Mut<physics::BodiesService>,
+    mut input: Mut<Input>,
 ) {
     init_skybox(&mut world, &mut assets);
-    init_players(&mut world, &mut assets, &mut bodies);
+    init_players(&mut world, &mut assets, &mut bodies, &mut input);
     init_light(&mut world);
 }
 
@@ -82,6 +83,7 @@ fn init_players(
     world: &mut World,
     assets: &mut Assets,
     bodies: &mut physics::BodiesService,
+    input: &mut Input,
 ) {
     let texture = assets.register::<Texture>("player::texture");
     let mesh = assets.register::<Mesh>("player::mesh");
@@ -94,6 +96,12 @@ fn init_players(
         texture,
         drone::Drone::new(Point3::new(0.0, 2.0, 0.0), bodies)
     );
+
+    // Map W key to Run Action
+    input.mapper_mut::<Mapper<Action>>()
+        .set(vec![
+            (Action::MoveForward, Button::Key(KeyCode::W)),
+        ]);
 }
 
 fn init_light(world: &mut World) {
@@ -101,9 +109,12 @@ fn init_light(world: &mut World) {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-/// All bindable actions
-struct Action;
+// All bindable actions
+enum Action {
+    MoveForward,
+}
 
+// Bind Inputs and Actions
 impl ActionMapper<Action> for Input {
     fn action_mapped(&self, action: Action) -> Option<&Button> {
         let mapper = self.mapper::<Mapper<Action>>();

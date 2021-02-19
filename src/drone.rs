@@ -1,12 +1,13 @@
 use super::physics;
+use super::Action;
 use rapier3d::dynamics::{ RigidBodyHandle, RigidBodyBuilder, BodyStatus, };
 use rapier3d::na::{ Vector3, Isometry3, };
 
 use dotrix::{
     assets:: { Id, Texture, Mesh, },
     components:: { Model, },
-    ecs::{ Mut, },
-    services::{ World, },
+    ecs::{ Mut, Const, },
+    services::{ World, Input },
     math::{ Point3, },
 };
 
@@ -48,7 +49,8 @@ pub fn init_drone(
 
 pub fn player_control(
     world: Mut<World>,
-    bodies: Mut<physics::BodiesService>,
+    mut bodies: Mut<physics::BodiesService>,
+    input: Const<Input>,
 ) {
     // Query player entity
     let query = world.query::<(&mut Model, &mut Drone)>();
@@ -56,7 +58,11 @@ pub fn player_control(
     // this loop will run only once, because Player component is assigned to only one entity
     for (model, drone) in query {
 
-        let rigid_body = bodies.bodies.get(drone.rigid_body_h).unwrap();    
+        let rigid_body = bodies.bodies.get_mut(drone.rigid_body_h).unwrap();
+        
+        if input.is_action_hold(Action::MoveForward) {
+            rigid_body.set_linvel(Vector3::y() * 1.0, true);
+        };
 
         let pos = rigid_body.position().translation;
     
