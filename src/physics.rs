@@ -1,15 +1,26 @@
-use rapier3d::na::{ Vector3, };
-use rapier3d::dynamics::{ 
-    JointSet,
-    RigidBodySet,
-    IntegrationParameters,
+use rapier3d:: {
+    na::{ Vector3, },
+    dynamics::{ JointSet, RigidBodySet, IntegrationParameters, RigidBodyHandle, },
+    geometry::{ BroadPhase, NarrowPhase, ColliderSet, },
+    pipeline::PhysicsPipeline,
 };
-use rapier3d::geometry::{ BroadPhase, NarrowPhase, ColliderSet };
-use rapier3d::pipeline::PhysicsPipeline;
 
 use dotrix::{
-    ecs::{ Mut, Context },
+    ecs::{ Mut, Context, },
 };
+
+/// Component
+pub struct RigidBody {
+    pub rigid_body_handle: RigidBodyHandle,
+}
+
+impl RigidBody {
+    pub fn new(rigid_body_handle: RigidBodyHandle) -> Self {        
+        Self {
+            rigid_body_handle,
+        }
+    }
+}
 
 pub struct BodiesService {   
     pub bodies: RigidBodySet,
@@ -49,23 +60,25 @@ impl Default for JointsService {
 
 pub struct PipelineContext {
     pipeline: PhysicsPipeline,
+    gravity: Vector3<f32>,
 }
 
 impl Default for PipelineContext {
     fn default() -> Self {
         Self {
             pipeline: PhysicsPipeline::new(),
+            gravity: Vector3::new(0.0, -0.5, 0.0),
         }
     }
 }
 
-pub fn physics_system(mut ppl_ctx: Context<PipelineContext>,
-                      mut bodies: Mut<BodiesService>,
-                      mut colliders: Mut<CollidersService>,
-                      mut joints: Mut<JointsService>,
-                     ) {
+pub fn system(mut ppl_ctx: Context<PipelineContext>,
+    mut bodies: Mut<BodiesService>,
+    mut colliders: Mut<CollidersService>,
+    mut joints: Mut<JointsService>,
+) {
     
-    let gravity = Vector3::new(0.0, -0.5, 0.0);
+    let gravity = ppl_ctx.gravity;
     let integration_parameters = IntegrationParameters::default();
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();

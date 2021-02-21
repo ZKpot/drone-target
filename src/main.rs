@@ -3,13 +3,13 @@ mod drone;
 
 use dotrix::{
     Dotrix,
-    assets:: { Texture, Mesh },
-    components:: { SkyBox, Light },
-    ecs::{ Mut, RunLevel, System },
-    input::{ ActionMapper, Button, KeyCode, Mapper },
-    services::{ Assets, Camera, Frame, Input, World },
-    systems::{ camera_control, world_renderer },
-    math::{ Point3 },
+    assets:: { Texture, },
+    components:: { SkyBox, Light, },
+    ecs::{ Mut, RunLevel, System, },
+    input::{ ActionMapper, Button, KeyCode, Mapper, },
+    services::{ Assets, Camera, Frame, Input, World, },
+    systems::{ camera_control, world_renderer, },
+    math::{ Point3, },
 };
 
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
         .with_system(System::from(world_renderer).with(RunLevel::Render))
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
-        .with_system(System::from(physics::physics_system))
+        .with_system(System::from(physics::system))
         .with_system(System::from(drone::player_control))
         .with_service(Assets::new())
         .with_service(Frame::new())
@@ -85,16 +85,13 @@ fn init_players(
     bodies: &mut physics::BodiesService,
     input: &mut Input,
 ) {
-    let texture = assets.register::<Texture>("player::texture");
-    let mesh = assets.register::<Mesh>("player::mesh");
-
     assets.import("assets/player/player.gltf");
 
-    drone::init_drone(
+    drone::spawn(
         world,
-        mesh,
-        texture,
-        drone::Drone::new(Point3::new(0.0, 2.0, 0.0), bodies)
+        assets,
+        bodies,
+        Point3::new(0.0, 2.0, 0.0),
     );
 
     // Map W key to Run Action

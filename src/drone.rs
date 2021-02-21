@@ -1,48 +1,46 @@
-use super::physics;
-use super::Action;
-use rapier3d::dynamics::{ RigidBodyHandle, RigidBodyBuilder, BodyStatus, };
-use rapier3d::na::{ Vector3, Isometry3, };
+use super::{ physics, Action, };
 
-use dotrix::{
-    assets:: { Id, Texture, Mesh, },
-    components:: { Model, },
-    ecs::{ Mut, Const, },
-    services::{ World, Input },
-    math::{ Point3, },
+use rapier3d::{
+    dynamics::{ RigidBodyBuilder, BodyStatus, },
+    na::{ Vector3, Isometry3, },
 };
 
-pub struct Drone{
-    rigid_body_h: RigidBodyHandle,
-}
+use dotrix::{
+    components:: { Model, },
+    ecs::{ Mut, Const, },
+    services::{ Assets, World, Input, },
+    math::{ Point3, Vec3, },
+    renderer::transform::Transform,
+};
 
-impl Drone {
-    pub fn new(position: Point3, bodies: &mut physics::BodiesService) -> Self {
-        
-        let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic)
-            .position(Isometry3::new(
-                Vector3::new(position.x, position.y, position.z),
-                Vector3::y())
-            )
-            .mass(0.1)
-            .build();
-        
-        Self {
-            rigid_body_h: bodies.bodies.insert(rigid_body),
-        }
-    }
-}
-
-pub fn init_drone(
+pub fn spawn(
     world: &mut World,
-    mesh: Id<Mesh>,
-    texture: Id<Texture>,
-    drone: Drone,
-) {
+    assets: &mut Assets,
+    bodies: &mut physics::BodiesService,
+    position: Point3,
+) {   
+
+    let texture = assets.register("player::texture");
+    let mesh = assets.register("player::mesh");
+
+    let transform = Transform {
+        translate: Vec3::new(position.x, position.y, position.z),
+        ..Default::default()
+    };
+
+    let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic)
+        .position(Isometry3::new(
+            Vector3::new(position.x, position.y, position.z),
+            Vector3::y())
+        )
+        .mass(0.1)
+        .build();
+
     // spawn model in the world
     world.spawn(Some(
         (
-            Model { mesh, texture, ..Default::default() },
-            drone,
+            Model { mesh, texture, transform, ..Default::default() },
+            physics::RigidBody::new(bodies.bodies.insert(rigid_body)),
         ),
     ));
 }
@@ -53,18 +51,18 @@ pub fn player_control(
     input: Const<Input>,
 ) {
     // Query player entity
-    let query = world.query::<(&mut Model, &mut Drone)>();
+    let query = world.query::<(&mut Model, &mut physics::RigidBody)>();
 
     // this loop will run only once, because Player component is assigned to only one entity
-    for (model, drone) in query {
+    for (model, rigid_body) in query {
 
-        let rigid_body = bodies.bodies.get_mut(drone.rigid_body_h).unwrap();
+        let body = bodies.bodies.get_mut(rigid_body.rigid_body_handle).unwrap();
         
         if input.is_action_hold(Action::MoveForward) {
-            rigid_body.set_linvel(Vector3::y() * 1.0, true);
+            body.set_linvel(Vector3::y() * 1.0, true);
         };
 
-        let pos = rigid_body.position().translation;
+        let pos = body.position().translation;
     
         // apply translation
         model.transform.translate.x = pos.x;
