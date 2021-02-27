@@ -1,26 +1,28 @@
 mod physics;
 mod drone;
+mod player;
 
 use dotrix::{
     Dotrix,
     assets:: { Texture, },
-    components:: { SkyBox, Light, },
+    components:: { SkyBox, Light, Model },
     ecs::{ Mut, RunLevel, System, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
     services::{ Assets, Camera, Frame, Input, World, },
     systems::{ camera_control, world_renderer, },
-    math::{ Point3, },
+    math::{ Point3, Vec3, },
+    renderer::transform::Transform,
 };
 
 fn main() {
-    let mapper: Mapper<Action> = Mapper::new();
+    let mapper: Mapper<player::Action> = Mapper::new();
 
     Dotrix::application("push-it")
         .with_system(System::from(world_renderer).with(RunLevel::Render))
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
         .with_system(System::from(physics::system))
-        .with_system(System::from(drone::player_control))
+        .with_system(System::from(player::control))
         .with_service(Assets::new())
         .with_service(Frame::new())
         .with_service(
@@ -38,7 +40,6 @@ fn main() {
         .with_service(physics::CollidersService::default())
         .with_service(physics::JointsService::default())
         .run();
-
 }
 
 fn startup(
@@ -48,8 +49,8 @@ fn startup(
     mut input: Mut<Input>,
 ) {
     init_skybox(&mut world, &mut assets);
-    init_players(&mut world, &mut assets, &mut bodies, &mut input);
     init_light(&mut world);
+    init_drones(&mut world, &mut assets, &mut bodies, &mut input);
 }
 
 fn init_skybox(
@@ -79,7 +80,7 @@ fn init_skybox(
     ]);
 }
 
-fn init_players(
+fn init_drones(
     world: &mut World,
     assets: &mut Assets,
     bodies: &mut physics::BodiesService,
@@ -87,34 +88,23 @@ fn init_players(
 ) {
     assets.import("assets/player/player.gltf");
 
-    drone::spawn(
+    player::spawn(
         world,
         assets,
         bodies,
         Point3::new(0.0, 2.0, 0.0),
+        input,
     );
 
-    // Map W key to Run Action
-    input.mapper_mut::<Mapper<Action>>()
-        .set(vec![
-            (Action::MoveForward, Button::Key(KeyCode::W)),
-        ]);
+    drone::spawn(
+        world,
+        assets,
+        bodies,
+        Point3::new(0.0, 0.0, 0.0),
+        drone::Stats::default(),
+    );
 }
 
 fn init_light(world: &mut World) {
     world.spawn(Some((Light::white([25.0, 100.0, 25.0]),)));
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-// All bindable actions
-enum Action {
-    MoveForward,
-}
-
-// Bind Inputs and Actions
-impl ActionMapper<Action> for Input {
-    fn action_mapped(&self, action: Action) -> Option<&Button> {
-        let mapper = self.mapper::<Mapper<Action>>();
-        mapper.get_button(action)
-    }
 }

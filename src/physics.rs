@@ -67,7 +67,7 @@ impl Default for PipelineContext {
     fn default() -> Self {
         Self {
             pipeline: PhysicsPipeline::new(),
-            gravity: Vector3::new(0.0, -0.5, 0.0),
+            gravity: Vector3::new(0.0, 0.0, 0.0),
         }
     }
 }
