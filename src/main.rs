@@ -5,17 +5,16 @@ mod player;
 use dotrix::{
     Dotrix,
     assets:: { Texture, },
-    components:: { SkyBox, Light, Model },
+    components:: { SkyBox, Light },
     ecs::{ Mut, RunLevel, System, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
     services::{ Assets, Camera, Frame, Input, World, },
     systems::{ camera_control, world_renderer, },
-    math::{ Point3, Vec3, },
-    renderer::transform::Transform,
+    math::{ Point3, },
 };
 
 fn main() {
-    let mapper: Mapper<player::Action> = Mapper::new();
+    let mapper: Mapper<Action> = Mapper::new();
 
     Dotrix::application("push-it")
         .with_system(System::from(world_renderer).with(RunLevel::Render))
@@ -28,8 +27,8 @@ fn main() {
         .with_service(
             Camera {
                 distance: 10.0,
-                y_angle: 0.5,
-                xz_angle: 0.0,                
+                y_angle: 0.0,
+                xz_angle: 0.0,
                 target: Point3::new(0.0, 2.0, 0.0),
                 ..Default::default()
             }
@@ -50,7 +49,8 @@ fn startup(
 ) {
     init_skybox(&mut world, &mut assets);
     init_light(&mut world);
-    init_drones(&mut world, &mut assets, &mut bodies, &mut input);
+    init_drones(&mut world, &mut assets, &mut bodies);
+    init_controls(&mut input);
 }
 
 fn init_skybox(
@@ -84,7 +84,6 @@ fn init_drones(
     world: &mut World,
     assets: &mut Assets,
     bodies: &mut physics::BodiesService,
-    input: &mut Input,
 ) {
     assets.import("assets/player/player.gltf");
 
@@ -93,18 +92,60 @@ fn init_drones(
         assets,
         bodies,
         Point3::new(0.0, 2.0, 0.0),
-        input,
     );
 
-    drone::spawn(
-        world,
-        assets,
-        bodies,
-        Point3::new(0.0, 0.0, 0.0),
-        drone::Stats::default(),
-    );
+    let positions: [[f32; 3]; 7] = [
+        [10.0,  0.0,  5.0],
+        [ 5.0, -5.0, -3.0],
+        [-5.0, -5.0,  7.0],
+        [ 0.0, -4.0,  3.0],
+        [-9.0,  5.0, -2.0],
+        [ 5.0,  5.0, 10.0],
+        [11.0, -5.0,  3.0],
+    ];
+
+    for i in 0..7 {
+        println!("{}", i);
+        drone::spawn(
+            world,
+            assets,
+            bodies,
+            Point3::new(positions[i][0], positions[i][1], positions[i][2]),
+            drone::Stats::default(),
+        );
+    }
+
+
 }
 
 fn init_light(world: &mut World) {
     world.spawn(Some((Light::white([25.0, 100.0, 25.0]),)));
+}
+
+fn init_controls(input: &mut Input) {
+    // Map W key to Run Action
+    input.mapper_mut::<Mapper<Action>>()
+        .set(vec![
+            (Action::MoveForward, Button::Key(KeyCode::W)),
+            (Action::MoveBackward, Button::Key(KeyCode::S)),
+            (Action::MoveLeft, Button::Key(KeyCode::A)),
+            (Action::MoveRight, Button::Key(KeyCode::D)),
+        ]);
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+// All bindable actions
+pub enum Action {
+    MoveForward,
+    MoveBackward,
+    MoveLeft,
+    MoveRight,
+}
+
+// Bind Inputs and Actions
+impl ActionMapper<Action> for Input {
+    fn action_mapped(&self, action: Action) -> Option<&Button> {
+        let mapper = self.mapper::<Mapper<Action>>();
+        mapper.get_button(action)
+    }
 }

@@ -7,21 +7,20 @@ use rapier3d::{
 
 use dotrix::{
     components:: { Model, },
-    ecs::{ Mut, Const, },
-    services::{ Assets, World, Input, },
+    services::{ Assets, World, },
     math::{ Point3, Vec3, },
     renderer::transform::Transform,
 };
 
 pub struct Stats {
-    pub isPlayer: bool,
+    pub is_player: bool,
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Self {
-            isPlayer: false,
-        }        
+            is_player: false,
+        }
     }
 }
 
@@ -31,7 +30,7 @@ pub fn spawn(
     bodies: &mut physics::BodiesService,
     position: Point3,
     stats: Stats,
-) {   
+) {
     let texture = assets.register("player::texture");
     let mesh = assets.register("player::mesh");
 
@@ -43,16 +42,19 @@ pub fn spawn(
     let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic)
         .position(Isometry3::new(
             Vector3::new(position.x, position.y, position.z),
-            Vector3::y())
+            Vector3::new(0.0, 0.0, 0.0))
         )
         .mass(0.1)
+        .principal_angular_inertia(Vector3::new(1.0, 1.0, 1.0))
+        .angular_damping(10.0)
+        .linear_damping(1.0)
         .build();
 
     // spawn model in the world
     world.spawn(Some(
         (
             Model { mesh, texture, transform, ..Default::default() },
-            physics::RigidBody::new(bodies.bodies.insert(rigid_body)),
+            physics::RigidBody::new(bodies.insert(rigid_body)),
             stats,
         ),
     ));
