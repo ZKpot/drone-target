@@ -130,6 +130,8 @@ fn init_controls(input: &mut Input) {
             (Action::MoveBackward, Button::Key(KeyCode::S)),
             (Action::MoveLeft, Button::Key(KeyCode::A)),
             (Action::MoveRight, Button::Key(KeyCode::D)),
+            (Action::Accelerate, Button::Key(KeyCode::LShift)),
+            (Action::Strike, Button::Key(KeyCode::LControl)),
         ]);
 }
 
@@ -140,6 +142,8 @@ pub enum Action {
     MoveBackward,
     MoveLeft,
     MoveRight,
+    Accelerate,
+    Strike,
 }
 
 // Bind Inputs and Actions

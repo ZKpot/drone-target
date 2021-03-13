@@ -69,26 +69,31 @@ pub fn control(
             );
 
             let side = Vector3::new(
-                -(-PI/2.0 + rotation_euler.2).sin(),
+                (-PI/2.0 + rotation_euler.2).sin(),
                 0.0,
-                -(-PI/2.0 + rotation_euler.2).cos()
+                (-PI/2.0 + rotation_euler.2).cos()
             );
 
+            let spd = if input.is_action_hold(Action::Accelerate){
+                5.0
+            } else {
+                1.0
+            };
+
             if input.is_action_hold(Action::MoveForward) {
-                body.apply_force(fwd * 1.0, true);
+                body.apply_force(fwd * spd, true);
             };
             if input.is_action_hold(Action::MoveBackward) {
-                body.apply_force(fwd * -1.0, true);
+                body.apply_force(-fwd * spd, true);
             };
             if input.is_action_hold(Action::MoveLeft) {
-                body.apply_force(side * -1.0, true);
+                body.apply_force(side * spd, true);
             };
             if input.is_action_hold(Action::MoveRight) {
-                body.apply_force(side * 1.0, true);
+                body.apply_force(-side * spd, true);
             };
 
             body.apply_torque(delta_axis * delta_angle * 50.0, true);
-
 
             // make camera following the player
             camera.target = Point3::new(postion.x, postion.y, postion.z);
