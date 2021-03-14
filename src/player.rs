@@ -16,6 +16,11 @@ use dotrix::{
 
 use std::f32::consts::PI;
 
+const D_CHARGE:        f32 = 0.05;
+const D_ACC_CHARGE:    f32 = 0.25;
+const D_STRIKE_CHARGE: f32 = 0.5;
+const MAX_CHARGE:      f32 = 100.0;
+
 pub fn control(
     world: Mut<World>,
     mut bodies: Mut<physics::BodiesService>,
@@ -60,8 +65,6 @@ pub fn control(
 
             let rotation_euler = rotation.euler_angles();
 
-            println!("{:?}", rotation_euler);
-
             let fwd = Vector3::new(
                 -rotation_euler.2.sin() * rotation_euler.1.cos(),
                 rotation_euler.1.sin(),
@@ -74,7 +77,8 @@ pub fn control(
                 (-PI/2.0 + rotation_euler.2).cos()
             );
 
-            let spd = if input.is_action_hold(Action::Accelerate){
+            let spd = if input.is_action_hold(Action::Accelerate) & (stats.charge >= D_ACC_CHARGE) {
+                stats.charge = stats.charge - D_ACC_CHARGE;
                 5.0
             } else {
                 1.0
@@ -98,6 +102,23 @@ pub fn control(
             // make camera following the player
             camera.target = Point3::new(postion.x, postion.y, postion.z);
             camera.set_view();
+
+            stats.charge = stats.charge + D_CHARGE;
+
+            if input.is_action_hold(Action::Strike) & (stats.strike_charge < stats.charge)  {
+                stats.strike_charge = stats.strike_charge + D_STRIKE_CHARGE;
+            };
+
+            if input.is_action_deactivated(Action::Strike) {
+                body.apply_impulse(fwd * stats.strike_charge, true);
+                stats.charge = stats.charge - stats.strike_charge;
+                stats.strike_charge = 0.0;
+            };
+
+            stats.charge = stats.charge.min(MAX_CHARGE);
+            stats.strike_charge = stats.strike_charge.min(stats.charge);
+
+            println!("{} {}", stats.charge, stats.strike_charge);
         }
 
         // apply translation to the model
@@ -130,6 +151,6 @@ pub fn spawn(
         assets,
         bodies,
         position,
-        drone::Stats{ is_player: true },
+        drone::Stats{ is_player: true, ..Default::default() },
     );
 }

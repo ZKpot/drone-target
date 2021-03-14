@@ -14,12 +14,16 @@ use dotrix::{
 
 pub struct Stats {
     pub is_player: bool,
+    pub charge: f32,            // drone battery state of charge (0-100%)
+    pub strike_charge: f32,     // energy to be used when strike is activated (0-100%)
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Self {
             is_player: false,
+            charge: 0.0,
+            strike_charge: 0.0
         }
     }
 }
