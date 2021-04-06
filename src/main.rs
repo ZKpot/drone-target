@@ -1,6 +1,5 @@
 mod physics;
 mod drone;
-mod player;
 
 use dotrix::{
     Dotrix,
@@ -16,12 +15,12 @@ use dotrix::{
 fn main() {
     let mapper: Mapper<Action> = Mapper::new();
 
-    Dotrix::application("push-it")
+    Dotrix::application("drone-target")
         .with_system(System::from(world_renderer).with(RunLevel::Render))
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
         .with_system(System::from(physics::system))
-        .with_system(System::from(player::control))
+        .with_system(System::from(drone::control))
         .with_service(Assets::new())
         .with_service(Frame::new())
         .with_service(
@@ -85,13 +84,14 @@ fn init_drones(
     assets: &mut Assets,
     bodies: &mut physics::BodiesService,
 ) {
-    assets.import("assets/player/player.gltf");
+    assets.import("assets/drone/drone.gltf");
 
-    player::spawn(
+    drone::spawn(
         world,
         assets,
         bodies,
         Point3::new(0.0, 2.0, 0.0),
+        true,
     );
 
     let positions: [[f32; 3]; 20] = [
@@ -124,7 +124,7 @@ fn init_drones(
             assets,
             bodies,
             Point3::new(positions[i][0], positions[i][1], positions[i][2]),
-            drone::Stats::default(),
+            false,
         );
     }
 
