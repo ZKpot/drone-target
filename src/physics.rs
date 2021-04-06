@@ -11,50 +11,63 @@ use dotrix::{
 
 /// Component
 pub struct RigidBody {
-    pub rigid_body_handle: RigidBodyHandle,
+    pub handle: RigidBodyHandle,
 }
 
 impl RigidBody {
-    pub fn new(rigid_body_handle: RigidBodyHandle) -> Self {        
+    pub fn new(handle: RigidBodyHandle) -> Self {
         Self {
-            rigid_body_handle,
+            handle,
         }
     }
 }
 
-pub struct BodiesService {   
-    pub bodies: RigidBodySet,
+pub struct BodiesService {
+    bodies: RigidBodySet,
 }
 
 impl Default for BodiesService {
     fn default() -> Self {
-        Self {         
+        Self {
             bodies: RigidBodySet::new(),
-        }        
+        }
     }
 }
 
-pub struct CollidersService {   
+impl BodiesService {
+    #[inline(always)]
+    pub fn insert(&mut self, rigid_body:  rapier3d::dynamics::RigidBody) -> RigidBodyHandle {
+        self.bodies.insert(rigid_body)
+    }
+
+    #[inline(always)]
+    pub fn get_mut(&mut self, handle: RigidBodyHandle) -> Option<&mut rapier3d::dynamics::RigidBody> {
+        self.bodies.get_mut(handle)
+    }
+}
+
+
+pub struct CollidersService {
     colliders: ColliderSet,
 }
 
 impl Default for CollidersService {
     fn default() -> Self {
-        Self {         
+        Self {
             colliders: ColliderSet::new(),
-        }        
+        }
     }
 }
 
-pub struct JointsService {   
+pub struct JointsService {
     joints: JointSet,
 }
 
 impl Default for JointsService {
     fn default() -> Self {
-        Self {         
+        Self {
             joints: JointSet::new(),
-        }        
+        }
     }
 }
 
@@ -67,7 +80,7 @@ impl Default for PipelineContext {
     fn default() -> Self {
         Self {
             pipeline: PhysicsPipeline::new(),
-            gravity: Vector3::new(0.0, -0.5, 0.0),
+            gravity: Vector3::new(0.0, 0.0, 0.0),
         }
     }
 }
@@ -77,13 +90,13 @@ pub fn system(mut ppl_ctx: Context<PipelineContext>,
     mut colliders: Mut<CollidersService>,
     mut joints: Mut<JointsService>,
 ) {
-    
+
     let gravity = ppl_ctx.gravity;
     let integration_parameters = IntegrationParameters::default();
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();
     let event_handler = ();
-    
+
     ppl_ctx.pipeline.step(
         &gravity,
         &integration_parameters,

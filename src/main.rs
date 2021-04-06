@@ -4,7 +4,7 @@ mod drone;
 use dotrix::{
     Dotrix,
     assets:: { Texture, },
-    components:: { SkyBox, Light, },
+    components:: { SkyBox, Light },
     ecs::{ Mut, RunLevel, System, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
     services::{ Assets, Camera, Frame, Input, World, },
@@ -15,19 +15,19 @@ use dotrix::{
 fn main() {
     let mapper: Mapper<Action> = Mapper::new();
 
-    Dotrix::application("push-it")
+    Dotrix::application("drone-target")
         .with_system(System::from(world_renderer).with(RunLevel::Render))
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
         .with_system(System::from(physics::system))
-        .with_system(System::from(drone::player_control))
+        .with_system(System::from(drone::control))
         .with_service(Assets::new())
         .with_service(Frame::new())
         .with_service(
             Camera {
                 distance: 10.0,
-                y_angle: 0.5,
-                xz_angle: 0.0,                
+                y_angle: 0.0,
+                xz_angle: 0.0,
                 target: Point3::new(0.0, 2.0, 0.0),
                 ..Default::default()
             }
@@ -38,7 +38,6 @@ fn main() {
         .with_service(physics::CollidersService::default())
         .with_service(physics::JointsService::default())
         .run();
-
 }
 
 fn startup(
@@ -48,8 +47,9 @@ fn startup(
     mut input: Mut<Input>,
 ) {
     init_skybox(&mut world, &mut assets);
-    init_players(&mut world, &mut assets, &mut bodies, &mut input);
     init_light(&mut world);
+    init_drones(&mut world, &mut assets, &mut bodies);
+    init_controls(&mut input);
 }
 
 fn init_skybox(
@@ -79,36 +79,84 @@ fn init_skybox(
     ]);
 }
 
-fn init_players(
+fn init_drones(
     world: &mut World,
     assets: &mut Assets,
     bodies: &mut physics::BodiesService,
-    input: &mut Input,
 ) {
-    assets.import("assets/player/player.gltf");
+    assets.import("assets/drone/drone.gltf");
 
     drone::spawn(
         world,
         assets,
         bodies,
         Point3::new(0.0, 2.0, 0.0),
+        true,
     );
 
-    // Map W key to Run Action
-    input.mapper_mut::<Mapper<Action>>()
-        .set(vec![
-            (Action::MoveForward, Button::Key(KeyCode::W)),
-        ]);
+    let positions: [[f32; 3]; 20] = [
+        [ 80.0,  10.0, -90.0],
+        [-50.0,  20.0,  30.0],
+        [100.0, -50.0, -40.0],
+        [  0.0, -25.0,  20.0],
+        [ 15.0,  35.0,  -2.0],
+        [-90.0, -85.0,  10.0],
+        [-45.0,  25.0, -95.0],
+        [-80.0, -10.0,  90.0],
+        [ 50.0, -20.0, -30.0],
+        [-95.0,  50.0,  40.0],
+        [ 10.0,  25.0, -20.0],
+        [-15.0, -35.0,   2.0],
+        [ 90.0,  85.0, -10.0],
+        [ 45.0, -25.0,  95.0],
+        [ 80.0, -10.0, -90.0],
+        [ 50.0,  20.0, -30.0],
+        [100.0,  50.0, -40.0],
+        [  0.0, -25.0, -20.0],
+        [-15.0,  35.0,   2.0],
+        [-90.0,  85.0,  10.0],
+    ];
+
+    for i in 0..positions.len() {
+        println!("{}", i);
+        drone::spawn(
+            world,
+            assets,
+            bodies,
+            Point3::new(positions[i][0], positions[i][1], positions[i][2]),
+            false,
+        );
+    }
+
+
 }
 
 fn init_light(world: &mut World) {
     world.spawn(Some((Light::white([25.0, 100.0, 25.0]),)));
 }
 
+fn init_controls(input: &mut Input) {
+    // Map W key to Run Action
+    input.mapper_mut::<Mapper<Action>>()
+        .set(vec![
+            (Action::MoveForward, Button::Key(KeyCode::W)),
+            (Action::MoveBackward, Button::Key(KeyCode::S)),
+            (Action::MoveLeft, Button::Key(KeyCode::A)),
+            (Action::MoveRight, Button::Key(KeyCode::D)),
+            (Action::Accelerate, Button::Key(KeyCode::LShift)),
+            (Action::Strike, Button::MouseLeft),
+        ]);
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 // All bindable actions
-enum Action {
+pub enum Action {
     MoveForward,
+    MoveBackward,
+    MoveLeft,
+    MoveRight,
+    Accelerate,
+    Strike,
 }
 
 // Bind Inputs and Actions
