@@ -1,5 +1,6 @@
 mod physics;
 mod drone;
+use rapier3d;
 
 use dotrix::{
     Dotrix,
@@ -19,7 +20,7 @@ fn main() {
         .with_system(System::from(world_renderer).with(RunLevel::Render))
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
-        .with_system(System::from(physics::system))
+        .with_system(System::from(physics::step))
         .with_system(System::from(drone::control))
         .with_service(Assets::new())
         .with_service(Frame::new())
@@ -34,16 +35,16 @@ fn main() {
         )
         .with_service(World::new())
         .with_service(Input::new(Box::new(mapper)))
-        .with_service(physics::BodiesService::default())
-        .with_service(physics::CollidersService::default())
-        .with_service(physics::JointsService::default())
+        .with_service(rapier3d::dynamics::RigidBodySet::new())
+        .with_service(rapier3d::geometry::ColliderSet::new())
+        .with_service(rapier3d::dynamics::JointSet::new())
         .run();
 }
 
 fn startup(
     mut world: Mut<World>,
     mut assets: Mut<Assets>,
-    mut bodies: Mut<physics::BodiesService>,
+    mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
     mut input: Mut<Input>,
 ) {
     init_skybox(&mut world, &mut assets);
@@ -82,7 +83,7 @@ fn init_skybox(
 fn init_drones(
     world: &mut World,
     assets: &mut Assets,
-    bodies: &mut physics::BodiesService,
+    bodies: &mut rapier3d::dynamics::RigidBodySet,
 ) {
     assets.import("assets/drone/drone.gltf");
 

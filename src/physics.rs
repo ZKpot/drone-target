@@ -1,6 +1,6 @@
 use rapier3d:: {
     na::{ Vector3, },
-    dynamics::{ JointSet, RigidBodySet, IntegrationParameters, RigidBodyHandle, },
+    dynamics::{ CCDSolver, JointSet, RigidBodySet, IntegrationParameters, },
     geometry::{ BroadPhase, NarrowPhase, ColliderSet, },
     pipeline::PhysicsPipeline,
 };
@@ -9,74 +9,12 @@ use dotrix::{
     ecs::{ Mut, Context, },
 };
 
-/// Component
-pub struct RigidBody {
-    pub handle: RigidBodyHandle,
-}
-
-impl RigidBody {
-    pub fn new(handle: RigidBodyHandle) -> Self {
-        Self {
-            handle,
-        }
-    }
-}
-
-pub struct BodiesService {
-    bodies: RigidBodySet,
-}
-
-impl Default for BodiesService {
-    fn default() -> Self {
-        Self {
-            bodies: RigidBodySet::new(),
-        }
-    }
-}
-
-impl BodiesService {
-    #[inline(always)]
-    pub fn insert(&mut self, rigid_body:  rapier3d::dynamics::RigidBody) -> RigidBodyHandle {
-        self.bodies.insert(rigid_body)
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self, handle: RigidBodyHandle) -> Option<&mut rapier3d::dynamics::RigidBody> {
-        self.bodies.get_mut(handle)
-    }
-}
-
-
-pub struct CollidersService {
-    colliders: ColliderSet,
-}
-
-impl Default for CollidersService {
-    fn default() -> Self {
-        Self {
-            colliders: ColliderSet::new(),
-        }
-    }
-}
-
-pub struct JointsService {
-    joints: JointSet,
-}
-
-impl Default for JointsService {
-    fn default() -> Self {
-        Self {
-            joints: JointSet::new(),
-        }
-    }
-}
-
-pub struct PipelineContext {
+pub struct Pipeline {
     pipeline: PhysicsPipeline,
     gravity: Vector3<f32>,
 }
 
-impl Default for PipelineContext {
+impl Default for Pipeline {
     fn default() -> Self {
         Self {
             pipeline: PhysicsPipeline::new(),
@@ -85,28 +23,30 @@ impl Default for PipelineContext {
     }
 }
 
-pub fn system(mut ppl_ctx: Context<PipelineContext>,
-    mut bodies: Mut<BodiesService>,
-    mut colliders: Mut<CollidersService>,
-    mut joints: Mut<JointsService>,
+pub fn step(mut context: Context<Pipeline>,
+    mut bodies: Mut<RigidBodySet>,
+    mut colliders: Mut<ColliderSet>,
+    mut joints: Mut<JointSet>,
 ) {
 
-    let gravity = ppl_ctx.gravity;
+    let gravity = context.gravity;
     let integration_parameters = IntegrationParameters::default();
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();
+    let mut ccd_solver = CCDSolver::new();
+    let physics_hooks = ();
     let event_handler = ();
 
-    ppl_ctx.pipeline.step(
+    context.pipeline.step(
         &gravity,
         &integration_parameters,
         &mut broad_phase,
         &mut narrow_phase,
-        &mut bodies.bodies,
-        &mut colliders.colliders,
-        &mut joints.joints,
-        None,
-        None,
+        &mut bodies,
+        &mut colliders,
+        &mut joints,
+        &mut ccd_solver,
+        &physics_hooks,
         &event_handler
     );
 }
