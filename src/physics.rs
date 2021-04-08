@@ -12,6 +12,7 @@ use dotrix::{
 pub struct Pipeline {
     pipeline: PhysicsPipeline,
     gravity: Vector3<f32>,
+    integration_parameters: IntegrationParameters,
 }
 
 impl Default for Pipeline {
@@ -19,6 +20,7 @@ impl Default for Pipeline {
         Self {
             pipeline: PhysicsPipeline::new(),
             gravity: Vector3::new(0.0, 0.0, 0.0),
+            integration_parameters: IntegrationParameters::default(),
         }
     }
 }
@@ -27,13 +29,13 @@ pub fn step(mut context: Context<Pipeline>,
     mut bodies: Mut<RigidBodySet>,
     mut colliders: Mut<ColliderSet>,
     mut joints: Mut<JointSet>,
+    mut broad_phase: Mut<BroadPhase>,
+    mut narrow_phase: Mut<NarrowPhase>,
+    mut ccd_solver: Mut<CCDSolver>,
 ) {
 
     let gravity = context.gravity;
-    let integration_parameters = IntegrationParameters::default();
-    let mut broad_phase = BroadPhase::new();
-    let mut narrow_phase = NarrowPhase::new();
-    let mut ccd_solver = CCDSolver::new();
+    let integration_parameters = context.integration_parameters;
     let physics_hooks = ();
     let event_handler = ();
 

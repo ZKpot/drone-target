@@ -38,6 +38,9 @@ fn main() {
         .with_service(rapier3d::dynamics::RigidBodySet::new())
         .with_service(rapier3d::geometry::ColliderSet::new())
         .with_service(rapier3d::dynamics::JointSet::new())
+        .with_service(rapier3d::geometry::BroadPhase::new())
+        .with_service(rapier3d::geometry::NarrowPhase::new())
+        .with_service(rapier3d::dynamics::CCDSolver::new())
         .run();
 }
 
@@ -45,11 +48,12 @@ fn startup(
     mut world: Mut<World>,
     mut assets: Mut<Assets>,
     mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
+    mut colliders: Mut<rapier3d::geometry::ColliderSet>,
     mut input: Mut<Input>,
 ) {
     init_skybox(&mut world, &mut assets);
     init_light(&mut world);
-    init_drones(&mut world, &mut assets, &mut bodies);
+    init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
     init_controls(&mut input);
 }
 
@@ -84,6 +88,7 @@ fn init_drones(
     world: &mut World,
     assets: &mut Assets,
     bodies: &mut rapier3d::dynamics::RigidBodySet,
+    colliders: &mut rapier3d::geometry::ColliderSet,
 ) {
     assets.import("assets/drone/drone.gltf");
 
@@ -91,7 +96,8 @@ fn init_drones(
         world,
         assets,
         bodies,
-        Point3::new(0.0, 2.0, 0.0),
+        colliders,
+        Point3::new(0.0, 0.0, 0.0),
         true,
     );
 
@@ -124,6 +130,7 @@ fn init_drones(
             world,
             assets,
             bodies,
+            colliders,
             Point3::new(positions[i][0], positions[i][1], positions[i][2]),
             false,
         );
