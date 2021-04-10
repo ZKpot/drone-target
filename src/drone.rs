@@ -169,6 +169,7 @@ pub fn spawn(
 
     let transform = Transform {
         translate: Vec3::new(position.x, position.y, position.z),
+        scale: Vec3::new(1.18, 1.18, 1.18),
         ..Default::default()
     };
 
