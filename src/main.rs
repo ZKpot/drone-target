@@ -1,5 +1,6 @@
 mod physics;
 mod drone;
+use rapier3d;
 
 use dotrix::{
     Dotrix,
@@ -19,7 +20,7 @@ fn main() {
         .with_system(System::from(world_renderer).with(RunLevel::Render))
         .with_system(System::from(startup).with(RunLevel::Startup))
         .with_system(System::from(camera_control))
-        .with_system(System::from(physics::system))
+        .with_system(System::from(physics::step))
         .with_system(System::from(drone::control))
         .with_service(Assets::new())
         .with_service(Frame::new())
@@ -34,21 +35,25 @@ fn main() {
         )
         .with_service(World::new())
         .with_service(Input::new(Box::new(mapper)))
-        .with_service(physics::BodiesService::default())
-        .with_service(physics::CollidersService::default())
-        .with_service(physics::JointsService::default())
+        .with_service(rapier3d::dynamics::RigidBodySet::new())
+        .with_service(rapier3d::geometry::ColliderSet::new())
+        .with_service(rapier3d::dynamics::JointSet::new())
+        .with_service(rapier3d::geometry::BroadPhase::new())
+        .with_service(rapier3d::geometry::NarrowPhase::new())
+        .with_service(rapier3d::dynamics::CCDSolver::new())
         .run();
 }
 
 fn startup(
     mut world: Mut<World>,
     mut assets: Mut<Assets>,
-    mut bodies: Mut<physics::BodiesService>,
+    mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
+    mut colliders: Mut<rapier3d::geometry::ColliderSet>,
     mut input: Mut<Input>,
 ) {
     init_skybox(&mut world, &mut assets);
     init_light(&mut world);
-    init_drones(&mut world, &mut assets, &mut bodies);
+    init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
     init_controls(&mut input);
 }
 
@@ -82,7 +87,8 @@ fn init_skybox(
 fn init_drones(
     world: &mut World,
     assets: &mut Assets,
-    bodies: &mut physics::BodiesService,
+    bodies: &mut rapier3d::dynamics::RigidBodySet,
+    colliders: &mut rapier3d::geometry::ColliderSet,
 ) {
     assets.import("assets/drone/drone.gltf");
 
@@ -90,7 +96,8 @@ fn init_drones(
         world,
         assets,
         bodies,
-        Point3::new(0.0, 2.0, 0.0),
+        colliders,
+        Point3::new(0.0, 0.0, 0.0),
         true,
     );
 
@@ -123,6 +130,7 @@ fn init_drones(
             world,
             assets,
             bodies,
+            colliders,
             Point3::new(positions[i][0], positions[i][1], positions[i][2]),
             false,
         );

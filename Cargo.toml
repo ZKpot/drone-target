@@ -10,4 +10,5 @@ git = "https://github.com/lowenware/dotrix"
 rev = "847b6290bc5136a0b428d7baf5cd2493e770540d"
 
 [dependencies.rapier3d]
-version = "0.5.0"
+version = "0.7.2"
+features = [ "simd-stable" ]

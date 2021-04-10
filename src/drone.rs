@@ -1,8 +1,9 @@
-use super::{ physics, Action, };
+use super::{ Action, };
 
 use rapier3d::{
-    dynamics::{ RigidBodyBuilder, BodyStatus, },
-    na::{ Vector3, Isometry3, geometry::UnitQuaternion, },
+    dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle, },
+    geometry::{ ColliderSet, ColliderBuilder, },
+    na::{ Vector3, geometry::UnitQuaternion, },
 };
 
 use dotrix::{
@@ -38,17 +39,17 @@ const MAX_CHARGE:      f32 = 100.0;
 
 pub fn control(
     world: Mut<World>,
-    mut bodies: Mut<physics::BodiesService>,
+    mut bodies: Mut<RigidBodySet>,
     input: Const<Input>,
     mut camera: Mut<Camera>,
 ) {
     // Query player entity
-    let query = world.query::<(&mut Model, &mut physics::RigidBody, &mut Stats)>();
+    let query = world.query::<(&mut Model, &mut RigidBodyHandle, &mut Stats)>();
 
     // this loop will run only once, because Player component is assigned to only one entity
     for (model, rigid_body, stats) in query {
 
-        let body = bodies.get_mut(rigid_body.handle).unwrap();
+        let body = bodies.get_mut(*rigid_body).unwrap();
         let postion = body.position().translation;
 
         //TO DO: rething dw1 and dw2 usage
@@ -125,7 +126,7 @@ pub fn control(
             };
 
             if input.is_action_deactivated(Action::Strike) {
-                body.apply_impulse(fwd * stats.strike_charge, true);
+                body.apply_impulse(fwd * stats.strike_charge / 4.0, true);
                 stats.charge = stats.charge - stats.strike_charge;
                 stats.strike_charge = 0.0;
             };
@@ -158,7 +159,8 @@ pub fn control(
 pub fn spawn(
     world: &mut World,
     assets: &mut Assets,
-    bodies: &mut physics::BodiesService,
+    bodies: &mut RigidBodySet,
+    colliders: &mut ColliderSet,
     position: Point3,
     is_player: bool,
 ) {
@@ -171,21 +173,24 @@ pub fn spawn(
     };
 
     let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic)
-        .position(Isometry3::new(
-            Vector3::new(position.x, position.y, position.z),
-            Vector3::new(0.0, 0.0, 0.0))
-        )
-        .mass(0.1)
-        .principal_angular_inertia(Vector3::new(1.0, 1.0, 1.0))
-        .angular_damping(10.0)
+        .translation(position.x, position.y, position.z)
+        .angular_damping(40.0)
+        .additional_principal_angular_inertia(Vector3::new(0.2, 0.2, 0.2))
         .linear_damping(1.0)
         .build();
 
-    // spawn model in the world
+    let collider = ColliderBuilder::ball(1.0)
+        .density(0.02)
+        .build();
+
+    let body_handle = bodies.insert(rigid_body);
+
+    colliders.insert(collider, body_handle, bodies);
+
     world.spawn(Some(
         (
             Model { mesh, texture, transform, ..Default::default() },
-            physics::RigidBody::new(bodies.insert(rigid_body)),
+            body_handle,
             Stats{ is_player, ..Default::default() },
         ),
     ));
