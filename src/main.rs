@@ -5,12 +5,12 @@ use rapier3d;
 use dotrix::{
     Dotrix,
     assets:: { Texture, },
-    components:: { SkyBox, Light },
+    components:: { SkyBox, SimpleLight },
     ecs::{ Mut, RunLevel, System, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
     services::{ Assets, Camera, Frame, Input, World, },
     systems::{ camera_control, world_renderer, },
-    math::{ Point3, },
+    math::{ Point3, Vec3 },
 };
 
 fn main() {
@@ -140,7 +140,21 @@ fn init_drones(
 }
 
 fn init_light(world: &mut World) {
-    world.spawn(Some((Light::white([25.0, 100.0, 25.0]),)));
+    world.spawn(Some((SimpleLight{
+        position: Vec3::new(200.0, 0.0, 200.0),
+        intensity: 0.8,
+        ..Default::default()
+    },)));
+    world.spawn(Some((SimpleLight{
+        position: Vec3::new(-200.0, 50.0, 100.0),
+        intensity: 0.05,
+        ..Default::default()
+    },)));
+    world.spawn(Some((SimpleLight{
+        position: Vec3::new(100.0, -50.0, -200.0),
+        intensity: 0.05,
+        ..Default::default()
+    },)));
 }
 
 fn init_controls(input: &mut Input) {
