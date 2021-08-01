@@ -1,5 +1,6 @@
 mod physics;
 mod drone;
+mod beam;
 use rapier3d;
 
 use dotrix::{
@@ -53,6 +54,7 @@ fn startup(
 ) {
     init_skybox(&mut world, &mut assets);
     init_light(&mut world);
+    init_world(&mut world, &mut assets, &mut bodies, &mut colliders);
     init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
     init_controls(&mut input);
 }
@@ -84,6 +86,23 @@ fn init_skybox(
     ]);
 }
 
+fn init_world(
+    world: &mut World,
+    assets: &mut Assets,
+    bodies: &mut rapier3d::dynamics::RigidBodySet,
+    colliders: &mut rapier3d::geometry::ColliderSet,
+) {
+    assets.import("assets/energy_beam/energy_beam.gltf");
+
+    beam::spawn(
+        world,
+        assets,
+        bodies,
+        colliders,
+        Point3::new(0.0, 0.0, 0.0),
+    );
+}
+
 fn init_drones(
     world: &mut World,
     assets: &mut Assets,
@@ -97,7 +116,7 @@ fn init_drones(
         assets,
         bodies,
         colliders,
-        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(10.0, 0.0, 0.0),
         true,
     );
 
