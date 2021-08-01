@@ -36,6 +36,7 @@ const D_CHARGE:        f32 = 0.05;
 const D_ACC_CHARGE:    f32 = 0.25;
 const D_STRIKE_CHARGE: f32 = 0.5;
 const MAX_CHARGE:      f32 = 100.0;
+const VELO_MIN:        f32 = 10.0;
 
 pub fn control(
     world: Mut<World>,
@@ -43,16 +44,15 @@ pub fn control(
     input: Const<Input>,
     mut camera: Mut<Camera>,
 ) {
-    // Query player entity
+    // Query drone entities
     let query = world.query::<(&mut Model, &mut RigidBodyHandle, &mut Stats)>();
 
-    // this loop will run only once, because Player component is assigned to only one entity
     for (model, rigid_body, stats) in query {
 
         let body = bodies.get_mut(*rigid_body).unwrap();
-        let postion = body.position().translation;
+        let position = body.position().translation;
 
-        //TO DO: rething dw1 and dw2 usage
+        //TO DO: rethink dw1 and dw2 usage
         let dw1 = UnitQuaternion::from_euler_angles(0.0, 0.0, -PI/2.0);
         let rotation = body.position().rotation * dw1.inverse();
 
@@ -60,7 +60,7 @@ pub fn control(
             let target_xz_angle = camera.xz_angle;
             let target_y_angle = camera.y_angle;
 
-            //TO DO: rething PI/2.0 shift
+            //TO DO: rethink PI/2.0 shift
             let target_rotation = UnitQuaternion::from_euler_angles(
                 0.0,
                 -target_xz_angle,
@@ -95,28 +95,52 @@ pub fn control(
 
             let spd = if input.is_action_hold(Action::Accelerate) & (stats.charge >= D_ACC_CHARGE) {
                 stats.charge = stats.charge - D_ACC_CHARGE;
-                5.0
+                10.0
             } else {
                 1.0
             };
 
+            let mut dir = Vector3::new(0.0, 0.0, 0.0);
+
             if input.is_action_hold(Action::MoveForward) {
-                body.apply_force(fwd * spd, true);
+                dir = dir + fwd;
             };
             if input.is_action_hold(Action::MoveBackward) {
-                body.apply_force(-fwd * spd, true);
+                dir = dir - fwd;
             };
             if input.is_action_hold(Action::MoveLeft) {
-                body.apply_force(side * spd, true);
+                dir = dir + side;
             };
             if input.is_action_hold(Action::MoveRight) {
-                body.apply_force(-side * spd, true);
+                dir = dir - side;
             };
+
+            let velo = *body.linvel();
+
+            if dir != Vector3::new(0.0, 0.0, 0.0) {
+                dir = dir.normalize();
+
+                // compensate movement in other directions
+                if velo != Vector3::new(0.0, 0.0, 0.0) {
+                    let comp = velo.normalize().dot(&dir)/dir.dot(&dir)*dir;
+                    dir = dir - (velo.normalize() - comp);
+                    dir = dir.normalize();
+                }
+
+                body.apply_force(dir * spd, true);
+            }
+
+            // drag force to limit acceleration
+            let speed = (velo.dot(&velo)).sqrt() - VELO_MIN;
+            if speed > 0.0 {
+                let f_drag = -(0.1*speed + 0.002 * speed.powf(2.0)) * velo.normalize();
+                body.apply_force(f_drag, true);
+            }
 
             body.apply_torque(delta_axis * delta_angle * 50.0, true);
 
             // make camera following the player
-            camera.target = Point3::new(postion.x, postion.y, postion.z);
+            camera.target = Point3::new(position.x, position.y, position.z);
             camera.set_view();
 
             stats.charge = stats.charge + D_CHARGE;
@@ -126,7 +150,7 @@ pub fn control(
             };
 
             if input.is_action_deactivated(Action::Strike) {
-                body.apply_impulse(fwd * stats.strike_charge / 4.0, true);
+                body.apply_impulse(fwd * stats.strike_charge * 2.0, true);
                 stats.charge = stats.charge - stats.strike_charge;
                 stats.strike_charge = 0.0;
             };
@@ -138,9 +162,9 @@ pub fn control(
         }
 
         // apply translation to the model
-        model.transform.translate.x = postion.x;
-        model.transform.translate.y = postion.y;
-        model.transform.translate.z = postion.z;
+        model.transform.translate.x = position.x;
+        model.transform.translate.y = position.y;
+        model.transform.translate.z = position.z;
 
         //TO DO: rething dw1 and dw2 usage
         let dw2 = UnitQuaternion::from_euler_angles(0.0, 0.0, PI/2.0);
@@ -177,7 +201,7 @@ pub fn spawn(
         .translation(position.x, position.y, position.z)
         .angular_damping(40.0)
         .additional_principal_angular_inertia(Vector3::new(0.2, 0.2, 0.2))
-        .linear_damping(1.0)
+        .linear_damping(0.0)
         .build();
 
     let collider = ColliderBuilder::ball(1.0)
