@@ -1,16 +1,17 @@
 mod physics;
 mod drone;
+mod beam;
 use rapier3d;
 
 use dotrix::{
     Dotrix,
     assets:: { Texture, },
-    components:: { SkyBox, Light },
+    components:: { SkyBox, SimpleLight },
     ecs::{ Mut, RunLevel, System, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
     services::{ Assets, Camera, Frame, Input, World, },
     systems::{ camera_control, world_renderer, },
-    math::{ Point3, },
+    math::{ Point3, Vec3 },
 };
 
 fn main() {
@@ -22,6 +23,7 @@ fn main() {
         .with_system(System::from(camera_control))
         .with_system(System::from(physics::step))
         .with_system(System::from(drone::control))
+        .with_system(System::from(beam::gravity))
         .with_service(Assets::new())
         .with_service(Frame::new())
         .with_service(
@@ -53,6 +55,7 @@ fn startup(
 ) {
     init_skybox(&mut world, &mut assets);
     init_light(&mut world);
+    init_world(&mut world, &mut assets, &mut bodies, &mut colliders);
     init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
     init_controls(&mut input);
 }
@@ -84,6 +87,23 @@ fn init_skybox(
     ]);
 }
 
+fn init_world(
+    world: &mut World,
+    assets: &mut Assets,
+    bodies: &mut rapier3d::dynamics::RigidBodySet,
+    colliders: &mut rapier3d::geometry::ColliderSet,
+) {
+    assets.import("assets/energy_beam/energy_beam.gltf");
+
+    beam::spawn(
+        world,
+        assets,
+        bodies,
+        colliders,
+        Point3::new(0.0, 0.0, 0.0),
+    );
+}
+
 fn init_drones(
     world: &mut World,
     assets: &mut Assets,
@@ -97,7 +117,7 @@ fn init_drones(
         assets,
         bodies,
         colliders,
-        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(10.0, 0.0, 0.0),
         true,
     );
 
@@ -140,7 +160,21 @@ fn init_drones(
 }
 
 fn init_light(world: &mut World) {
-    world.spawn(Some((Light::white([25.0, 100.0, 25.0]),)));
+    world.spawn(Some((SimpleLight{
+        position: Vec3::new(200.0, 0.0, 200.0),
+        intensity: 0.8,
+        ..Default::default()
+    },)));
+    world.spawn(Some((SimpleLight{
+        position: Vec3::new(-200.0, 50.0, 100.0),
+        intensity: 0.05,
+        ..Default::default()
+    },)));
+    world.spawn(Some((SimpleLight{
+        position: Vec3::new(100.0, -50.0, -200.0),
+        intensity: 0.05,
+        ..Default::default()
+    },)));
 }
 
 fn init_controls(input: &mut Input) {
