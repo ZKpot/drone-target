@@ -23,6 +23,7 @@ fn main() {
         .with_system(System::from(camera_control))
         .with_system(System::from(physics::step))
         .with_system(System::from(drone::control))
+        .with_system(System::from(beam::gravity))
         .with_service(Assets::new())
         .with_service(Frame::new())
         .with_service(

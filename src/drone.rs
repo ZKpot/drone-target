@@ -16,23 +16,29 @@ use dotrix::{
 
 use std::f32::consts::PI;
 
+use crate::beam;
+
 pub struct Stats {
-    pub is_player: bool,
-    pub charge: f32,            // drone battery state of charge (0-100%)
-    pub strike_charge: f32,     // energy to be used when strike is activated (0-100%)
+    pub is_player:     bool,
+    pub charge:        f32,  // drone battery state of charge (0-100%)
+    pub strike_charge: f32,  // energy to be used when strike is activated (0-100%)
+    pub health:        f32,
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Self {
-            is_player: false,
-            charge: 0.0,
-            strike_charge: 0.0
+            is_player:     false,
+            charge:          0.0,
+            strike_charge:   0.0,
+            health:        100.0
         }
     }
 }
 
-const D_CHARGE:        f32 = 0.05;
+const D_CHARGE:        f32 = 0.5;
+const D_HEALTH:        f32 = 0.2;
+const D_MOVE_CHARGE:   f32 = 0.05;
 const D_ACC_CHARGE:    f32 = 0.25;
 const D_STRIKE_CHARGE: f32 = 0.5;
 const MAX_CHARGE:      f32 = 100.0;
@@ -117,7 +123,7 @@ pub fn control(
 
             let velo = *body.linvel();
 
-            if dir != Vector3::new(0.0, 0.0, 0.0) {
+            if (dir != Vector3::new(0.0, 0.0, 0.0)) & (stats.charge >= D_MOVE_CHARGE)  {
                 dir = dir.normalize();
 
                 // compensate movement in other directions
@@ -128,6 +134,8 @@ pub fn control(
                 }
 
                 body.apply_force(dir * spd, true);
+
+                stats.charge = stats.charge - D_MOVE_CHARGE;
             }
 
             // drag force to limit acceleration
@@ -143,7 +151,6 @@ pub fn control(
             camera.target = Point3::new(position.x, position.y, position.z);
             camera.set_view();
 
-            stats.charge = stats.charge + D_CHARGE;
 
             if input.is_action_hold(Action::Strike) & (stats.strike_charge < stats.charge)  {
                 stats.strike_charge = stats.strike_charge + D_STRIKE_CHARGE;
@@ -158,7 +165,39 @@ pub fn control(
             stats.charge = stats.charge.min(MAX_CHARGE);
             stats.strike_charge = stats.strike_charge.min(stats.charge);
 
-            println!("{} {}", stats.charge, stats.strike_charge);
+            println!("{} {} {}",
+                stats.charge, stats.strike_charge, stats.health);
+        }
+
+        // interaction with beams
+        let beams_query =
+            world.query::<(&mut RigidBodyHandle, &mut beam::Stats)>();
+
+        for (beam_rigid_body, beam_stats) in beams_query {
+            let beam_body = bodies.get_mut(*beam_rigid_body).unwrap();
+            let beam_position = beam_body.position().translation;
+
+            let distance = nalgebra::distance(
+                &nalgebra::Point3::new(position.x, position.y, position.z,),
+                &nalgebra::Point3::new(
+                    beam_position.x, beam_position.y, beam_position.x)
+            );
+
+            if distance < beam_stats.radius_near {
+                stats.charge = stats.charge + D_CHARGE;
+                stats.health = stats.health - D_HEALTH;
+            } else if distance < beam_stats.radius_medium {
+                stats.charge = stats.charge + D_CHARGE / 10.0;
+            } else if distance > beam_stats.radius_far {
+                stats.health = stats.health - D_HEALTH;
+            }
+        }
+
+        // despawn
+        if stats.health <= 0.0 {
+            stats.charge = 0.0;
+            // TO DO: kill drone code
+            // world.exile(...); in dotrix >= 0.5
         }
 
         // apply translation to the model
