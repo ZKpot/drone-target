@@ -7,10 +7,11 @@ use rapier3d::{
 };
 
 use dotrix::{
-    components:: { Model, },
+    Transform,
+    Pipeline,
+    pbr:: { Model, Material, },
     services::{ Assets, World, Camera, Input, },
     math::{ Point3, Vec3, Quat, },
-    renderer::transform::Transform,
     ecs::{ Mut, Const, },
 };
 
@@ -51,9 +52,9 @@ pub fn control(
     mut camera: Mut<Camera>,
 ) {
     // Query drone entities
-    let query = world.query::<(&mut Model, &mut RigidBodyHandle, &mut Stats)>();
+    let query = world.query::<(&mut Transform, &mut RigidBodyHandle, &mut Stats)>();
 
-    for (model, rigid_body, stats) in query {
+    for (transform, rigid_body, stats) in query {
 
         let body = bodies.get_mut(*rigid_body).unwrap();
         let position = body.position().translation;
@@ -149,8 +150,6 @@ pub fn control(
 
             // make camera following the player
             camera.target = Point3::new(position.x, position.y, position.z);
-            camera.set_view();
-
 
             if input.is_action_hold(Action::Strike) & (stats.strike_charge < stats.charge)  {
                 stats.strike_charge = stats.strike_charge + D_STRIKE_CHARGE;
@@ -201,16 +200,16 @@ pub fn control(
         }
 
         // apply translation to the model
-        model.transform.translate.x = position.x;
-        model.transform.translate.y = position.y;
-        model.transform.translate.z = position.z;
+        transform.translate.x = position.x;
+        transform.translate.y = position.y;
+        transform.translate.z = position.z;
 
         //TO DO: rething dw1 and dw2 usage
         let dw2 = UnitQuaternion::from_euler_angles(0.0, 0.0, PI/2.0);
         let rot = rotation * dw2.inverse();
 
         // apply rotation to the model
-        model.transform.rotate = Quat::new(
+        transform.rotate = Quat::new(
             rot.into_inner().w,
             rot.into_inner().j,
             rot.into_inner().k,
@@ -230,12 +229,6 @@ pub fn spawn(
     let texture = assets.register("drone::texture");
     let mesh = assets.register("drone::mesh");
 
-    let transform = Transform {
-        translate: Vec3::new(position.x, position.y, position.z),
-        scale: Vec3::new(1.18, 1.18, 1.18),
-        ..Default::default()
-    };
-
     let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic)
         .translation(position.x, position.y, position.z)
         .angular_damping(40.0)
@@ -251,11 +244,19 @@ pub fn spawn(
 
     colliders.insert(collider, body_handle, bodies);
 
-    world.spawn(Some(
-        (
-            Model { mesh, texture, transform, ..Default::default() },
-            body_handle,
-            Stats{ is_player, ..Default::default() },
-        ),
-    ));
+    world.spawn(Some((
+        Model::from(mesh),
+        Material {
+            texture,
+            ..Default::default()
+        },
+        Transform {
+            translate: Vec3::new(position.x, position.y, position.z),
+            scale: Vec3::new(1.18, 1.18, 1.18),
+            ..Default::default()
+        },
+        body_handle,
+        Stats{ is_player, ..Default::default() },
+        Pipeline::default(),
+    )));
 }
