@@ -3,56 +3,52 @@ mod drone;
 mod beam;
 use rapier3d;
 
+use dotrix::prelude::*;
+
 use dotrix::{
-    Dotrix,
-    assets:: { Texture, },
-    components:: { SkyBox, SimpleLight },
-    ecs::{ Mut, RunLevel, System, },
+    Assets,
+    Camera,
+    CubeMap,
+    Color,
+    Input,
+    World,
+    Pipeline,
+
+    sky::{ skybox, SkyBox, },
+    pbr::{ self, Light, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
-    services::{ Assets, Camera, Frame, Input, World, },
-    systems::{ camera_control, world_renderer, },
+    camera,
     math::{ Point3, Vec3 },
 };
 
 fn main() {
-    let mapper: Mapper<Action> = Mapper::new();
-
     Dotrix::application("drone-target")
-        .with_system(System::from(world_renderer).with(RunLevel::Render))
-        .with_system(System::from(startup).with(RunLevel::Startup))
-        .with_system(System::from(camera_control))
+        .with_system(System::from(startup))
+        .with_system(System::from(camera::control))
         .with_system(System::from(physics::step))
         .with_system(System::from(drone::control))
         .with_system(System::from(beam::gravity))
-        .with_service(Assets::new())
-        .with_service(Frame::new())
-        .with_service(
-            Camera {
-                distance: 10.0,
-                y_angle: 0.0,
-                xz_angle: 0.0,
-                target: Point3::new(0.0, 2.0, 0.0),
-                ..Default::default()
-            }
-        )
-        .with_service(World::new())
-        .with_service(Input::new(Box::new(mapper)))
         .with_service(rapier3d::dynamics::RigidBodySet::new())
         .with_service(rapier3d::geometry::ColliderSet::new())
         .with_service(rapier3d::dynamics::JointSet::new())
         .with_service(rapier3d::geometry::BroadPhase::new())
         .with_service(rapier3d::geometry::NarrowPhase::new())
         .with_service(rapier3d::dynamics::CCDSolver::new())
+        .with(skybox::extension)
+        .with(pbr::extension)
         .run();
 }
 
 fn startup(
     mut world: Mut<World>,
+    mut camera: Mut<Camera>,
     mut assets: Mut<Assets>,
     mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
     mut colliders: Mut<rapier3d::geometry::ColliderSet>,
     mut input: Mut<Input>,
 ) {
+    input.set_mapper(Box::new(Mapper::<Action>::new()));
+    init_camera(&mut camera);
     init_skybox(&mut world, &mut assets);
     init_light(&mut world);
     init_world(&mut world, &mut assets, &mut bodies, &mut colliders);
@@ -60,19 +56,17 @@ fn startup(
     init_controls(&mut input);
 }
 
+fn init_camera(camera: &mut Camera) {
+    camera.y_angle = 0.0;
+    camera.xz_angle = 0.0;
+    camera.target = Point3::new(0.0, 2.0, 0.0);
+    camera.distance = 10.0;
+}
+
 fn init_skybox(
     world: &mut World,
     assets: &mut Assets,
 ) {
-    let primary_texture = [
-        assets.register::<Texture>("skybox_right"),
-        assets.register::<Texture>("skybox_left"),
-        assets.register::<Texture>("skybox_top"),
-        assets.register::<Texture>("skybox_bottom"),
-        assets.register::<Texture>("skybox_back"),
-        assets.register::<Texture>("skybox_front"),
-    ];
-
     // The skybox cubemap was downloaded from https://opengameart.org/content/elyvisions-skyboxes
     // These files were licensed as CC-BY 3.0 Unported on 2012/11/7
     assets.import("assets/skybox/skybox_right.png");
@@ -82,9 +76,23 @@ fn init_skybox(
     assets.import("assets/skybox/skybox_front.png");
     assets.import("assets/skybox/skybox_back.png");
 
-    world.spawn(vec![
-        (SkyBox { primary_texture, ..Default::default() },),
-    ]);
+    // Spawn skybox
+    world.spawn(Some((
+        SkyBox {
+            view_range: 500.0,
+            ..Default::default()
+        },
+        CubeMap {
+            right: assets.register("skybox_right"),
+            left: assets.register("skybox_left"),
+            top: assets.register("skybox_top"),
+            bottom: assets.register("skybox_bottom"),
+            back: assets.register("skybox_back"),
+            front: assets.register("skybox_front"),
+            ..Default::default()
+        },
+        Pipeline::default()
+    )));
 }
 
 fn init_world(
@@ -160,21 +168,32 @@ fn init_drones(
 }
 
 fn init_light(world: &mut World) {
-    world.spawn(Some((SimpleLight{
-        position: Vec3::new(200.0, 0.0, 200.0),
-        intensity: 0.8,
-        ..Default::default()
-    },)));
-    world.spawn(Some((SimpleLight{
-        position: Vec3::new(-200.0, 50.0, 100.0),
-        intensity: 0.05,
-        ..Default::default()
-    },)));
-    world.spawn(Some((SimpleLight{
-        position: Vec3::new(100.0, -50.0, -200.0),
-        intensity: 0.05,
-        ..Default::default()
-    },)));
+    world.spawn(Some((
+        Light::Simple {
+            position: Vec3::new(200.0, 0.0, 200.0),
+            color: Color::white(),
+            intensity: 0.8,
+            enabled: true,
+        },
+    )));
+
+    world.spawn(Some((
+        Light::Simple {
+            position: Vec3::new(-200.0, 50.0, 100.0),
+            color: Color::white(),
+            intensity: 0.8,
+            enabled: true,
+        },
+    )));
+
+    world.spawn(Some((
+        Light::Simple {
+            position: Vec3::new(100.0, -50.0, -200.0),
+            color: Color::white(),
+            intensity: 0.8,
+            enabled: true,
+        },
+    )));
 }
 
 fn init_controls(input: &mut Input) {

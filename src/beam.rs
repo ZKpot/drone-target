@@ -1,15 +1,14 @@
-use nalgebra;
-
 use rapier3d::{
     dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle },
     geometry::{ ColliderSet, ColliderBuilder, },
 };
 
 use dotrix::{
-    components:: { Model, },
+    Transform,
+    Pipeline,
+    pbr:: { Model, Material, },
     services::{ Assets, World, },
     math::{ Point3, Vec3, },
-    renderer::transform::Transform,
     ecs::{ Mut, },
 };
 
@@ -62,7 +61,7 @@ pub fn gravity(
             let distance = nalgebra::distance(
                 &nalgebra::Point3::new(position.x, position.y, position.z,),
                 &nalgebra::Point3::new(
-                    beam_position.x, beam_position.y, beam_position.x)
+                    beam_position.x, beam_position.y, beam_position.z)
             );
 
             if distance < beam_stats.gravity_radius {
@@ -91,12 +90,6 @@ pub fn spawn(
     let texture = assets.register("energy_beam::texture");
     let mesh = assets.register("energy_beam::mesh");
 
-    let transform = Transform {
-        translate: Vec3::new(position.x, position.y, position.z),
-        scale: Vec3::new(0.57 * SCALE, 0.57 * SCALE, 0.57 * SCALE),
-        ..Default::default()
-    };
-
     let rigid_body = RigidBodyBuilder::new(BodyStatus::Static)
         .translation(position.x, position.y, position.z)
         .build();
@@ -108,11 +101,19 @@ pub fn spawn(
 
     colliders.insert(collider, body_handle, bodies);
 
-    world.spawn(Some(
-        (
-            Model { mesh, texture, transform, ..Default::default() },
-            body_handle,
-            Stats { ..Default::default() }
-        ),
-    ));
+    world.spawn(Some((
+        Model::from(mesh),
+        Material {
+            texture,
+            ..Default::default()
+        },
+        Transform {
+            translate: Vec3::new(position.x, position.y, position.z),
+            scale: Vec3::new(0.57 * SCALE, 0.57 * SCALE, 0.57 * SCALE),
+            ..Default::default()
+        },
+        body_handle,
+        Stats { ..Default::default() },
+        Pipeline::default(),
+    )));
 }
