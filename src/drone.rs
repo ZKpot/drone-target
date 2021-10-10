@@ -12,7 +12,7 @@ use dotrix::{
     pbr:: { Model, Material, },
     services::{ Assets, World, Camera, Input, },
     math::{ Point3, Vec3, Quat, },
-    ecs::{ Mut, Const, },
+    ecs::{ Mut, Const, Entity, },
 };
 
 use std::f32::consts::PI;
@@ -46,15 +46,19 @@ const MAX_CHARGE:      f32 = 100.0;
 const VELO_MIN:        f32 = 10.0;
 
 pub fn control(
-    world: Mut<World>,
+    mut world: Mut<World>,
     mut bodies: Mut<RigidBodySet>,
     input: Const<Input>,
     mut camera: Mut<Camera>,
 ) {
     // Query drone entities
-    let query = world.query::<(&mut Transform, &mut RigidBodyHandle, &mut Stats)>();
+    let query = world.query::<(
+        &Entity ,&mut Transform, &mut RigidBodyHandle, &mut Stats
+    )>();
 
-    for (transform, rigid_body, stats) in query {
+    let mut to_exile = Vec::new();
+
+    for (entity, transform, rigid_body, stats) in query {
 
         let body = bodies.get_mut(*rigid_body).unwrap();
         let position = body.position().translation;
@@ -194,9 +198,7 @@ pub fn control(
 
         // despawn
         if stats.health <= 0.0 {
-            stats.charge = 0.0;
-            // TO DO: kill drone code
-            // world.exile(...); in dotrix >= 0.5
+            to_exile.push(*entity);
         }
 
         // apply translation to the model
@@ -215,6 +217,10 @@ pub fn control(
             rot.into_inner().k,
             rot.into_inner().i,
         );
+    }
+
+    for entity in to_exile.into_iter() {
+        world.exile(entity);
     }
 }
 
