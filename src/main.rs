@@ -25,20 +25,20 @@ use dotrix::{
 
 fn main() {
     Dotrix::application("drone-target")
-        .with_system(System::from(startup))
-        .with_system(System::from(settings::startup))
+        .with(System::from(startup))
+        .with(System::from(settings::startup))
 
-        .with_system(System::from(camera::control))
-        .with_system(System::from(physics::step))
-        .with_system(System::from(drone::control))
-        .with_system(System::from(beam::gravity))
+        .with(System::from(camera::control))
+        .with(System::from(physics::step))
+        .with(System::from(drone::control))
+        .with(System::from(beam::gravity))
 
-        .with_service(rapier3d::dynamics::RigidBodySet::new())
-        .with_service(rapier3d::geometry::ColliderSet::new())
-        .with_service(rapier3d::dynamics::JointSet::new())
-        .with_service(rapier3d::geometry::BroadPhase::new())
-        .with_service(rapier3d::geometry::NarrowPhase::new())
-        .with_service(rapier3d::dynamics::CCDSolver::new())
+        .with(Service::from(rapier3d::dynamics::RigidBodySet::new()))
+        .with(Service::from(rapier3d::geometry::ColliderSet::new()))
+        .with(Service::from(rapier3d::dynamics::JointSet::new()))
+        .with(Service::from(rapier3d::geometry::BroadPhase::new()))
+        .with(Service::from(rapier3d::geometry::NarrowPhase::new()))
+        .with(Service::from(rapier3d::dynamics::CCDSolver::new()))
 
         .with(skybox::extension)
         .with(pbr::extension)
@@ -170,8 +170,6 @@ fn init_drones(
             false,
         );
     }
-
-
 }
 
 fn init_light(world: &mut World) {
