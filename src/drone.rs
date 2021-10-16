@@ -4,6 +4,7 @@ use rapier3d::{
     dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle, },
     geometry::{ ColliderSet, ColliderBuilder, },
     na::{ Vector3, geometry::UnitQuaternion, },
+    na,
 };
 
 use dotrix::{
@@ -180,9 +181,9 @@ pub fn control(
             let beam_body = bodies.get_mut(*beam_rigid_body).unwrap();
             let beam_position = beam_body.position().translation;
 
-            let distance = nalgebra::distance(
-                &nalgebra::Point3::new(position.x, position.y, position.z,),
-                &nalgebra::Point3::new(
+            let distance = na::distance(
+                &na::Point3::new(position.x, position.y, position.z,),
+                &na::Point3::new(
                     beam_position.x, beam_position.y, beam_position.x)
             );
 

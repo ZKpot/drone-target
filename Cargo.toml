@@ -12,6 +12,3 @@ rev = "3c48c20ca6f9e1702f093a3198e3820256637824"
 [dependencies.rapier3d]
 version = "0.7.2"
 features = [ "simd-stable" ]
-
-[dependencies]
-nalgebra = "*"

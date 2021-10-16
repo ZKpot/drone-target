@@ -1,6 +1,7 @@
 use rapier3d::{
     dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle },
     geometry::{ ColliderSet, ColliderBuilder, },
+    na,
 };
 
 use dotrix::{
@@ -58,9 +59,9 @@ pub fn gravity(
             let body = bodies.get_mut(*rigid_body).unwrap();
             let position = body.position().translation;
 
-            let distance = nalgebra::distance(
-                &nalgebra::Point3::new(position.x, position.y, position.z,),
-                &nalgebra::Point3::new(
+            let distance = na::distance(
+                &na::Point3::new(position.x, position.y, position.z,),
+                &na::Point3::new(
                     beam_position.x, beam_position.y, beam_position.z)
             );
 
