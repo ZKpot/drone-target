@@ -1,6 +1,8 @@
 mod physics;
 mod drone;
 mod beam;
+mod settings;
+
 use rapier3d;
 
 use dotrix::prelude::*;
@@ -24,18 +26,23 @@ use dotrix::{
 fn main() {
     Dotrix::application("drone-target")
         .with_system(System::from(startup))
+        .with_system(System::from(settings::startup))
+
         .with_system(System::from(camera::control))
         .with_system(System::from(physics::step))
         .with_system(System::from(drone::control))
         .with_system(System::from(beam::gravity))
+
         .with_service(rapier3d::dynamics::RigidBodySet::new())
         .with_service(rapier3d::geometry::ColliderSet::new())
         .with_service(rapier3d::dynamics::JointSet::new())
         .with_service(rapier3d::geometry::BroadPhase::new())
         .with_service(rapier3d::geometry::NarrowPhase::new())
         .with_service(rapier3d::dynamics::CCDSolver::new())
+
         .with(skybox::extension)
         .with(pbr::extension)
+
         .run();
 }
 
