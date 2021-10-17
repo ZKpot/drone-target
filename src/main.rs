@@ -16,6 +16,8 @@ use dotrix::{
     World,
     Pipeline,
 
+    egui, overlay,
+
     sky::{ skybox, SkyBox, },
     pbr::{ self, Light, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
@@ -29,6 +31,7 @@ fn main() {
         .with(System::from(settings::startup))
 
         .with(System::from(settings::update))
+        .with(System::from(settings::menu))
         .with(System::from(camera::control))
         .with(System::from(physics::step))
         .with(System::from(drone::control))
@@ -44,6 +47,8 @@ fn main() {
 
         .with(skybox::extension)
         .with(pbr::extension)
+        .with(overlay::extension)
+        .with(egui::extension)
 
         .run();
 }

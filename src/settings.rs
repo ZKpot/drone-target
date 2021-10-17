@@ -4,15 +4,24 @@ use dotrix::ecs::{ Mut, Const };
 use dotrix::{ Window, };
 use dotrix::math::{ Vec2i, Vec2u };
 use dotrix::services::{ Input, };
+use dotrix::overlay::Overlay;
+use dotrix::window::{ Fullscreen, };
+
+use dotrix::egui::{
+    self,
+    Egui,
+};
 
 pub struct Settings {
-    pub paused: bool
+    pub paused: bool,
+    window_mode: WindowMode,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            paused: false
+            paused: false,
+            window_mode: WindowMode::Windowed,
         }
     }
 }
@@ -39,5 +48,55 @@ pub fn update (
 ) {
     if input.is_action_activated(Action::Menu) {
         settings.paused = !settings.paused;
+    }
+}
+
+pub fn menu (
+    overlay: Const<Overlay>,
+    mut settings: Mut<Settings>,
+    mut window: Mut<Window>,
+) {
+    window.set_cursor_grab(!settings.paused);
+    window.set_cursor_visible(settings.paused);
+
+    let egui = overlay.get::<Egui>()
+        .expect("Renderer does not contain an Overlay instance");
+
+    if settings.paused {
+        egui::containers::Window::new("Pause")
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::new(0.0, 0.0))
+            .collapsible(false)
+            .resizable(false)
+            .default_width(130.0)
+            .show(&egui.ctx, |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    if ui.button("Resume").clicked() {
+                        settings.paused = false;
+                    }
+
+                    if settings.window_mode == WindowMode::BorderlessFullscreen {
+                        if ui.button("Windowed").clicked() {
+                            window.set_fullscreen(None);
+                            settings.window_mode = WindowMode::Windowed;
+                        }
+                    } else {
+                        if ui.button("Fullscreen").clicked() {
+                            window.set_fullscreen(Some(Fullscreen::Borderless(0)));
+                            settings.window_mode = WindowMode::BorderlessFullscreen;
+                        }
+                    }
+
+                    if ui.button("Exit").clicked() {
+                        window.close();
+                    }
+                }
+            )
+        });
     };
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub enum WindowMode {
+    BorderlessFullscreen,
+    Windowed,
 }
