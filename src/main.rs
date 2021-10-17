@@ -28,6 +28,7 @@ fn main() {
         .with(System::from(startup))
         .with(System::from(settings::startup))
 
+        .with(System::from(settings::update))
         .with(System::from(camera::control))
         .with(System::from(physics::step))
         .with(System::from(drone::control))
@@ -39,6 +40,7 @@ fn main() {
         .with(Service::from(rapier3d::geometry::BroadPhase::new()))
         .with(Service::from(rapier3d::geometry::NarrowPhase::new()))
         .with(Service::from(rapier3d::dynamics::CCDSolver::new()))
+        .with(Service::from(settings::Settings::default()))
 
         .with(skybox::extension)
         .with(pbr::extension)
@@ -211,6 +213,7 @@ fn init_controls(input: &mut Input) {
             (Action::MoveRight, Button::Key(KeyCode::D)),
             (Action::Accelerate, Button::Key(KeyCode::LShift)),
             (Action::Strike, Button::MouseLeft),
+            (Action::Menu, Button::Key(KeyCode::Escape)),
         ]);
 }
 
@@ -223,6 +226,7 @@ pub enum Action {
     MoveRight,
     Accelerate,
     Strike,
+    Menu,
 }
 
 // Bind Inputs and Actions

@@ -1,3 +1,5 @@
+use super::settings;
+
 use rapier3d::{
     dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle },
     geometry::{ ColliderSet, ColliderBuilder, },
@@ -10,7 +12,7 @@ use dotrix::{
     pbr:: { Model, Material, },
     services::{ Assets, World, },
     math::{ Point3, Vec3, },
-    ecs::{ Mut, },
+    ecs::{ Mut, Const },
 };
 
 // beam size
@@ -41,42 +43,45 @@ impl Default for Stats {
 pub fn gravity(
     world: Mut<World>,
     mut bodies: Mut<RigidBodySet>,
+    settings: Const<settings::Settings>,
 ) {
-    // Query the beams
-    let beams_query =
-        world.query::<(&mut RigidBodyHandle, &mut Stats)>();
+    if !settings.paused {
+        // Query the beams
+        let beams_query =
+            world.query::<(&mut RigidBodyHandle, &mut Stats)>();
 
-    for (beam_rigid_body, beam_stats) in beams_query {
+        for (beam_rigid_body, beam_stats) in beams_query {
 
-        let beam_body = bodies.get_mut(*beam_rigid_body).unwrap();
-        let beam_position = beam_body.position().translation;
+            let beam_body = bodies.get_mut(*beam_rigid_body).unwrap();
+            let beam_position = beam_body.position().translation;
 
-        // Query all rigid bodies
-        let objects_query = world.query::<(&mut RigidBodyHandle, )>();
+            // Query all rigid bodies
+            let objects_query = world.query::<(&mut RigidBodyHandle, )>();
 
-        for (rigid_body, ) in objects_query {
+            for (rigid_body, ) in objects_query {
 
-            let body = bodies.get_mut(*rigid_body).unwrap();
-            let position = body.position().translation;
+                let body = bodies.get_mut(*rigid_body).unwrap();
+                let position = body.position().translation;
 
-            let distance = na::distance(
-                &na::Point3::new(position.x, position.y, position.z,),
-                &na::Point3::new(
-                    beam_position.x, beam_position.y, beam_position.z)
-            );
+                let distance = na::distance(
+                    &na::Point3::new(position.x, position.y, position.z,),
+                    &na::Point3::new(
+                        beam_position.x, beam_position.y, beam_position.z)
+                );
 
-            if distance < beam_stats.gravity_radius {
-                let gravity_force = beam_stats.gravity_max_force *
-                    (1.0 - distance/beam_stats.gravity_radius);
+                if distance < beam_stats.gravity_radius {
+                    let gravity_force = beam_stats.gravity_max_force *
+                        (1.0 - distance/beam_stats.gravity_radius);
 
-                let direction =
-                    (beam_position.vector - position.vector).normalize();
+                    let direction =
+                        (beam_position.vector - position.vector).normalize();
 
-                body.apply_force(direction * gravity_force, true);
+                    body.apply_force(direction * gravity_force, true);
+                }
+
+
+
             }
-
-
-
         }
     }
 }

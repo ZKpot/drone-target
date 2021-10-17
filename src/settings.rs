@@ -1,6 +1,21 @@
-use dotrix::ecs::{ Mut };
-use dotrix::{ Window };
+use super::{ Action, };
+
+use dotrix::ecs::{ Mut, Const };
+use dotrix::{ Window, };
 use dotrix::math::{ Vec2i, Vec2u };
+use dotrix::services::{ Input, };
+
+pub struct Settings {
+    pub paused: bool
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            paused: false
+        }
+    }
+}
 
 pub fn startup(
     mut window: Mut<Window>,
@@ -16,4 +31,13 @@ pub fn startup(
     );
 
     window.set_inner_size(Vec2u::new(1280, 720));
+}
+
+pub fn update (
+    mut settings: Mut<Settings>,
+    input: Const<Input>,
+) {
+    if input.is_action_activated(Action::Menu) {
+        settings.paused = !settings.paused;
+    };
 }
