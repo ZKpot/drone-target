@@ -172,8 +172,6 @@ pub fn control(
                 stats.charge = stats.charge.min(MAX_CHARGE);
                 stats.strike_charge = stats.strike_charge.min(stats.charge);
 
-                println!("{} {} {}",
-                    stats.charge, stats.strike_charge, stats.health);
             }
 
             // interaction with beams

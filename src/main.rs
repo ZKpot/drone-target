@@ -2,6 +2,7 @@ mod physics;
 mod drone;
 mod beam;
 mod settings;
+mod info_panel;
 
 use rapier3d;
 
@@ -36,6 +37,7 @@ fn main() {
         .with(System::from(physics::step))
         .with(System::from(drone::control))
         .with(System::from(beam::gravity))
+        .with(System::from(info_panel::update))
 
         .with(Service::from(rapier3d::dynamics::RigidBodySet::new()))
         .with(Service::from(rapier3d::geometry::ColliderSet::new()))
