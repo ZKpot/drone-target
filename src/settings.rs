@@ -15,6 +15,7 @@ use dotrix::egui::{
 pub struct Settings {
     pub paused: bool,
     pub show_info_panel: bool,
+    pub god_mode: bool,
     window_mode: WindowMode,
 }
 
@@ -23,6 +24,7 @@ impl Default for Settings {
         Self {
             paused: false,
             show_info_panel: true,
+            god_mode: false,
             window_mode: WindowMode::Windowed,
         }
     }
@@ -83,6 +85,16 @@ pub fn menu (
                     } else {
                         if ui.button("Show info panel").clicked() {
                             settings.show_info_panel = true;
+                        }
+                    }
+
+                    if settings.god_mode == true {
+                        if ui.button("God mode: on").clicked() {
+                            settings.god_mode = false;
+                        }
+                    } else {
+                        if ui.button("God mode: off").clicked() {
+                            settings.god_mode = true;
                         }
                     }
 

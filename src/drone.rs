@@ -209,6 +209,11 @@ pub fn control(
                 stats.dist_to_beam = distance;
             }
 
+            //god mode
+            if stats.is_player & settings.god_mode {
+                stats.health = 100.0;
+            }
+
             // despawn
             if stats.health <= 0.0 {
                 to_exile.push(*entity);
