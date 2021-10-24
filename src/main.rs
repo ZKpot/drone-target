@@ -1,6 +1,9 @@
 mod physics;
 mod drone;
 mod beam;
+mod settings;
+mod info_panel;
+
 use rapier3d;
 
 use dotrix::prelude::*;
@@ -14,6 +17,8 @@ use dotrix::{
     World,
     Pipeline,
 
+    egui, overlay,
+
     sky::{ skybox, SkyBox, },
     pbr::{ self, Light, },
     input::{ ActionMapper, Button, KeyCode, Mapper, },
@@ -23,19 +28,30 @@ use dotrix::{
 
 fn main() {
     Dotrix::application("drone-target")
-        .with_system(System::from(startup))
-        .with_system(System::from(camera::control))
-        .with_system(System::from(physics::step))
-        .with_system(System::from(drone::control))
-        .with_system(System::from(beam::gravity))
-        .with_service(rapier3d::dynamics::RigidBodySet::new())
-        .with_service(rapier3d::geometry::ColliderSet::new())
-        .with_service(rapier3d::dynamics::JointSet::new())
-        .with_service(rapier3d::geometry::BroadPhase::new())
-        .with_service(rapier3d::geometry::NarrowPhase::new())
-        .with_service(rapier3d::dynamics::CCDSolver::new())
+        .with(System::from(startup))
+        .with(System::from(settings::startup))
+
+        .with(System::from(settings::update))
+        .with(System::from(settings::menu))
+        .with(System::from(camera::control))
+        .with(System::from(physics::step))
+        .with(System::from(drone::control))
+        .with(System::from(beam::gravity))
+        .with(System::from(info_panel::update))
+
+        .with(Service::from(rapier3d::dynamics::RigidBodySet::new()))
+        .with(Service::from(rapier3d::geometry::ColliderSet::new()))
+        .with(Service::from(rapier3d::dynamics::JointSet::new()))
+        .with(Service::from(rapier3d::geometry::BroadPhase::new()))
+        .with(Service::from(rapier3d::geometry::NarrowPhase::new()))
+        .with(Service::from(rapier3d::dynamics::CCDSolver::new()))
+        .with(Service::from(settings::Settings::default()))
+
         .with(skybox::extension)
         .with(pbr::extension)
+        .with(overlay::extension)
+        .with(egui::extension)
+
         .run();
 }
 
@@ -163,8 +179,6 @@ fn init_drones(
             false,
         );
     }
-
-
 }
 
 fn init_light(world: &mut World) {
@@ -206,6 +220,7 @@ fn init_controls(input: &mut Input) {
             (Action::MoveRight, Button::Key(KeyCode::D)),
             (Action::Accelerate, Button::Key(KeyCode::LShift)),
             (Action::Strike, Button::MouseLeft),
+            (Action::Menu, Button::Key(KeyCode::Escape)),
         ]);
 }
 
@@ -218,6 +233,7 @@ pub enum Action {
     MoveRight,
     Accelerate,
     Strike,
+    Menu,
 }
 
 // Bind Inputs and Actions

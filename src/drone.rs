@@ -1,9 +1,11 @@
 use super::{ Action, };
+use super::settings;
 
 use rapier3d::{
     dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle, },
     geometry::{ ColliderSet, ColliderBuilder, },
     na::{ Vector3, geometry::UnitQuaternion, },
+    na,
 };
 
 use dotrix::{
@@ -19,11 +21,16 @@ use std::f32::consts::PI;
 
 use crate::beam;
 
+#[derive(Debug)]
 pub struct Stats {
     pub is_player:     bool,
     pub charge:        f32,  // drone battery state of charge (0-100%)
     pub strike_charge: f32,  // energy to be used when strike is activated (0-100%)
     pub health:        f32,
+    pub x:             f32,
+    pub y:             f32,
+    pub z:             f32,
+    pub dist_to_beam:  f32
 }
 
 impl Default for Stats {
@@ -32,7 +39,11 @@ impl Default for Stats {
             is_player:     false,
             charge:          0.0,
             strike_charge:   0.0,
-            health:        100.0
+            health:        100.0,
+            x:               0.0,
+            y:               0.0,
+            z:               0.0,
+            dist_to_beam:    0.0
         }
     }
 }
@@ -50,178 +61,191 @@ pub fn control(
     mut bodies: Mut<RigidBodySet>,
     input: Const<Input>,
     mut camera: Mut<Camera>,
+    settings: Const<settings::Settings>,
 ) {
-    // Query drone entities
-    let query = world.query::<(
-        &Entity ,&mut Transform, &mut RigidBodyHandle, &mut Stats
-    )>();
+    if !settings.paused {
+        // Query drone entities
+        let query = world.query::<(
+            &Entity ,&mut Transform, &mut RigidBodyHandle, &mut Stats
+        )>();
 
-    let mut to_exile = Vec::new();
+        let mut to_exile = Vec::new();
 
-    for (entity, transform, rigid_body, stats) in query {
+        for (entity, transform, rigid_body, stats) in query {
 
-        let body = bodies.get_mut(*rigid_body).unwrap();
-        let position = body.position().translation;
+            let body = bodies.get_mut(*rigid_body).unwrap();
+            let position = body.position().translation;
 
-        //TO DO: rethink dw1 and dw2 usage
-        let dw1 = UnitQuaternion::from_euler_angles(0.0, 0.0, -PI/2.0);
-        let rotation = body.position().rotation * dw1.inverse();
+            //TO DO: rethink dw1 and dw2 usage
+            let dw1 = UnitQuaternion::from_euler_angles(0.0, 0.0, -PI/2.0);
+            let rotation = body.position().rotation * dw1.inverse();
 
-        if stats.is_player {
-            let target_xz_angle = camera.xz_angle;
-            let target_y_angle = camera.y_angle;
+            if stats.is_player {
+                let target_xz_angle = camera.xz_angle;
+                let target_y_angle = camera.y_angle;
 
-            //TO DO: rethink PI/2.0 shift
-            let target_rotation = UnitQuaternion::from_euler_angles(
-                0.0,
-                -target_xz_angle,
-                PI/2.0 - target_y_angle
-            );
+                //TO DO: rethink PI/2.0 shift
+                let target_rotation = UnitQuaternion::from_euler_angles(
+                    0.0,
+                    -target_xz_angle,
+                    PI/2.0 - target_y_angle
+                );
 
-            let delta_rotation = target_rotation * rotation.inverse();
-            let delta_axis = match delta_rotation.axis() {
-                Some(x) => Vector3::new(
-                    x.into_inner().data[0],
-                    x.into_inner().data[1],
-                    x.into_inner().data[2],
-                ),
-                None    => Vector3::new(0.0, 0.0, 0.0),
-            };
+                let delta_rotation = target_rotation * rotation.inverse();
+                let delta_axis = match delta_rotation.axis() {
+                    Some(x) => Vector3::new(
+                        x.into_inner().data[0],
+                        x.into_inner().data[1],
+                        x.into_inner().data[2],
+                    ),
+                    None    => Vector3::new(0.0, 0.0, 0.0),
+                };
 
-            let delta_angle = delta_rotation.angle();
+                let delta_angle = delta_rotation.angle();
 
-            let rotation_euler = rotation.euler_angles();
+                let rotation_euler = rotation.euler_angles();
 
-            let fwd = Vector3::new(
-                -rotation_euler.2.sin() * rotation_euler.1.cos(),
-                rotation_euler.1.sin(),
-                -rotation_euler.2.cos() * rotation_euler.1.cos(),
-            );
+                let fwd = Vector3::new(
+                    -rotation_euler.2.sin() * rotation_euler.1.cos(),
+                    rotation_euler.1.sin(),
+                    -rotation_euler.2.cos() * rotation_euler.1.cos(),
+                );
 
-            let side = Vector3::new(
-                (-PI/2.0 + rotation_euler.2).sin(),
-                0.0,
-                (-PI/2.0 + rotation_euler.2).cos()
-            );
+                let side = Vector3::new(
+                    (-PI/2.0 + rotation_euler.2).sin(),
+                    0.0,
+                    (-PI/2.0 + rotation_euler.2).cos()
+                );
 
-            let spd = if input.is_action_hold(Action::Accelerate) & (stats.charge >= D_ACC_CHARGE) {
-                stats.charge = stats.charge - D_ACC_CHARGE;
-                10.0
-            } else {
-                1.0
-            };
+                let spd = if input.is_action_hold(Action::Accelerate) & (stats.charge >= D_ACC_CHARGE) {
+                    stats.charge = stats.charge - D_ACC_CHARGE;
+                    10.0
+                } else {
+                    1.0
+                };
 
-            let mut dir = Vector3::new(0.0, 0.0, 0.0);
+                let mut dir = Vector3::new(0.0, 0.0, 0.0);
 
-            if input.is_action_hold(Action::MoveForward) {
-                dir = dir + fwd;
-            };
-            if input.is_action_hold(Action::MoveBackward) {
-                dir = dir - fwd;
-            };
-            if input.is_action_hold(Action::MoveLeft) {
-                dir = dir + side;
-            };
-            if input.is_action_hold(Action::MoveRight) {
-                dir = dir - side;
-            };
+                if input.is_action_hold(Action::MoveForward) {
+                    dir = dir + fwd;
+                };
+                if input.is_action_hold(Action::MoveBackward) {
+                    dir = dir - fwd;
+                };
+                if input.is_action_hold(Action::MoveLeft) {
+                    dir = dir + side;
+                };
+                if input.is_action_hold(Action::MoveRight) {
+                    dir = dir - side;
+                };
 
-            let velo = *body.linvel();
+                let velo = *body.linvel();
 
-            if (dir != Vector3::new(0.0, 0.0, 0.0)) & (stats.charge >= D_MOVE_CHARGE)  {
-                dir = dir.normalize();
-
-                // compensate movement in other directions
-                if velo != Vector3::new(0.0, 0.0, 0.0) {
-                    let comp = velo.normalize().dot(&dir)/dir.dot(&dir)*dir;
-                    dir = dir - (velo.normalize() - comp);
+                if (dir != Vector3::new(0.0, 0.0, 0.0)) & (stats.charge >= D_MOVE_CHARGE)  {
                     dir = dir.normalize();
+
+                    // compensate movement in other directions
+                    if velo != Vector3::new(0.0, 0.0, 0.0) {
+                        let comp = velo.normalize().dot(&dir)/dir.dot(&dir)*dir;
+                        dir = dir - (velo.normalize() - comp);
+                        dir = dir.normalize();
+                    }
+
+                    body.apply_force(dir * spd, true);
+
+                    stats.charge = stats.charge - D_MOVE_CHARGE;
                 }
 
-                body.apply_force(dir * spd, true);
+                // drag force to limit acceleration
+                let speed = (velo.dot(&velo)).sqrt() - VELO_MIN;
+                if speed > 0.0 {
+                    let f_drag = -(0.1*speed + 0.002 * speed.powf(2.0)) * velo.normalize();
+                    body.apply_force(f_drag, true);
+                }
 
-                stats.charge = stats.charge - D_MOVE_CHARGE;
+                body.apply_torque(delta_axis * delta_angle * 50.0, true);
+
+                // make camera following the player
+                camera.target = Point3::new(position.x, position.y, position.z);
+
+                if input.is_action_hold(Action::Strike) & (stats.strike_charge < stats.charge)  {
+                    stats.strike_charge = stats.strike_charge + D_STRIKE_CHARGE;
+                };
+
+                if input.is_action_deactivated(Action::Strike) {
+                    body.apply_impulse(fwd * stats.strike_charge * 2.0, true);
+                    stats.charge = stats.charge - stats.strike_charge;
+                    stats.strike_charge = 0.0;
+                };
+
+                stats.charge = stats.charge.min(MAX_CHARGE);
+                stats.strike_charge = stats.strike_charge.min(stats.charge);
+
             }
 
-            // drag force to limit acceleration
-            let speed = (velo.dot(&velo)).sqrt() - VELO_MIN;
-            if speed > 0.0 {
-                let f_drag = -(0.1*speed + 0.002 * speed.powf(2.0)) * velo.normalize();
-                body.apply_force(f_drag, true);
+            // interaction with beams
+            let beams_query =
+                world.query::<(&mut RigidBodyHandle, &mut beam::Stats)>();
+
+            for (beam_rigid_body, beam_stats) in beams_query {
+                let beam_body = bodies.get_mut(*beam_rigid_body).unwrap();
+                let beam_position = beam_body.position().translation;
+
+                let distance = na::distance(
+                    &na::Point3::new(position.x, position.y, position.z,),
+                    &na::Point3::new(
+                        beam_position.x, beam_position.y, beam_position.x)
+                );
+
+                if distance < beam_stats.radius_near {
+                    stats.charge = stats.charge + D_CHARGE;
+                    stats.health = stats.health - D_HEALTH;
+                } else if distance < beam_stats.radius_medium {
+                    stats.charge = stats.charge + D_CHARGE / 10.0;
+                } else if distance > beam_stats.radius_far {
+                    stats.health = stats.health - D_HEALTH;
+                }
+
+                stats.dist_to_beam = distance;
             }
 
-            body.apply_torque(delta_axis * delta_angle * 50.0, true);
+            //god mode
+            if stats.is_player & settings.god_mode {
+                stats.health = 100.0;
+            }
 
-            // make camera following the player
-            camera.target = Point3::new(position.x, position.y, position.z);
+            // despawn
+            if stats.health <= 0.0 {
+                to_exile.push(*entity);
+            }
 
-            if input.is_action_hold(Action::Strike) & (stats.strike_charge < stats.charge)  {
-                stats.strike_charge = stats.strike_charge + D_STRIKE_CHARGE;
-            };
+            // apply translation to the model
+            transform.translate.x = position.x;
+            transform.translate.y = position.y;
+            transform.translate.z = position.z;
 
-            if input.is_action_deactivated(Action::Strike) {
-                body.apply_impulse(fwd * stats.strike_charge * 2.0, true);
-                stats.charge = stats.charge - stats.strike_charge;
-                stats.strike_charge = 0.0;
-            };
+            stats.x = position.x;
+            stats.y = position.y;
+            stats.z = position.z;
 
-            stats.charge = stats.charge.min(MAX_CHARGE);
-            stats.strike_charge = stats.strike_charge.min(stats.charge);
+            //TO DO: rething dw1 and dw2 usage
+            let dw2 = UnitQuaternion::from_euler_angles(0.0, 0.0, PI/2.0);
+            let rot = rotation * dw2.inverse();
 
-            println!("{} {} {}",
-                stats.charge, stats.strike_charge, stats.health);
-        }
-
-        // interaction with beams
-        let beams_query =
-            world.query::<(&mut RigidBodyHandle, &mut beam::Stats)>();
-
-        for (beam_rigid_body, beam_stats) in beams_query {
-            let beam_body = bodies.get_mut(*beam_rigid_body).unwrap();
-            let beam_position = beam_body.position().translation;
-
-            let distance = nalgebra::distance(
-                &nalgebra::Point3::new(position.x, position.y, position.z,),
-                &nalgebra::Point3::new(
-                    beam_position.x, beam_position.y, beam_position.x)
+            // apply rotation to the model
+            transform.rotate = Quat::new(
+                rot.into_inner().w,
+                rot.into_inner().j,
+                rot.into_inner().k,
+                rot.into_inner().i,
             );
-
-            if distance < beam_stats.radius_near {
-                stats.charge = stats.charge + D_CHARGE;
-                stats.health = stats.health - D_HEALTH;
-            } else if distance < beam_stats.radius_medium {
-                stats.charge = stats.charge + D_CHARGE / 10.0;
-            } else if distance > beam_stats.radius_far {
-                stats.health = stats.health - D_HEALTH;
-            }
         }
 
-        // despawn
-        if stats.health <= 0.0 {
-            to_exile.push(*entity);
+        for entity in to_exile.into_iter() {
+            world.exile(entity);
         }
-
-        // apply translation to the model
-        transform.translate.x = position.x;
-        transform.translate.y = position.y;
-        transform.translate.z = position.z;
-
-        //TO DO: rething dw1 and dw2 usage
-        let dw2 = UnitQuaternion::from_euler_angles(0.0, 0.0, PI/2.0);
-        let rot = rotation * dw2.inverse();
-
-        // apply rotation to the model
-        transform.rotate = Quat::new(
-            rot.into_inner().w,
-            rot.into_inner().j,
-            rot.into_inner().k,
-            rot.into_inner().i,
-        );
     }
 
-    for entity in to_exile.into_iter() {
-        world.exile(entity);
-    }
 }
 
 pub fn spawn(
