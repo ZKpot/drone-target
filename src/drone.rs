@@ -21,11 +21,16 @@ use std::f32::consts::PI;
 
 use crate::beam;
 
+#[derive(Debug)]
 pub struct Stats {
     pub is_player:     bool,
     pub charge:        f32,  // drone battery state of charge (0-100%)
     pub strike_charge: f32,  // energy to be used when strike is activated (0-100%)
     pub health:        f32,
+    pub x:             f32,
+    pub y:             f32,
+    pub z:             f32,
+    pub dist_to_beam:  f32
 }
 
 impl Default for Stats {
@@ -34,7 +39,11 @@ impl Default for Stats {
             is_player:     false,
             charge:          0.0,
             strike_charge:   0.0,
-            health:        100.0
+            health:        100.0,
+            x:               0.0,
+            y:               0.0,
+            z:               0.0,
+            dist_to_beam:    0.0
         }
     }
 }
@@ -196,6 +205,8 @@ pub fn control(
                 } else if distance > beam_stats.radius_far {
                     stats.health = stats.health - D_HEALTH;
                 }
+
+                stats.dist_to_beam = distance;
             }
 
             // despawn
@@ -207,6 +218,10 @@ pub fn control(
             transform.translate.x = position.x;
             transform.translate.y = position.y;
             transform.translate.z = position.z;
+
+            stats.x = position.x;
+            stats.y = position.y;
+            stats.z = position.z;
 
             //TO DO: rething dw1 and dw2 usage
             let dw2 = UnitQuaternion::from_euler_angles(0.0, 0.0, PI/2.0);

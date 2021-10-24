@@ -14,6 +14,7 @@ use dotrix::egui::{
 
 pub struct Settings {
     pub paused: bool,
+    pub show_info_panel: bool,
     window_mode: WindowMode,
 }
 
@@ -21,6 +22,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             paused: false,
+            show_info_panel: true,
             window_mode: WindowMode::Windowed,
         }
     }
@@ -72,6 +74,16 @@ pub fn menu (
                 ui.vertical_centered_justified(|ui| {
                     if ui.button("Resume").clicked() {
                         settings.paused = false;
+                    }
+
+                    if settings.show_info_panel == true {
+                        if ui.button("Hide info panel").clicked() {
+                            settings.show_info_panel = false;
+                        }
+                    } else {
+                        if ui.button("Show info panel").clicked() {
+                            settings.show_info_panel = true;
+                        }
                     }
 
                     if settings.window_mode == WindowMode::BorderlessFullscreen {
