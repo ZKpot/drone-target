@@ -16,6 +16,7 @@ use dotrix::{
     Input,
     World,
     Pipeline,
+    State,
 
     egui, overlay,
 
@@ -26,17 +27,23 @@ use dotrix::{
     math::{ Point3, Vec3 },
 };
 
+// States
+struct Pause {
+    handled: bool,
+}
+
+
 fn main() {
     Dotrix::application("drone-target")
         .with(System::from(startup))
         .with(System::from(settings::startup))
 
-        .with(System::from(settings::update))
-        .with(System::from(settings::menu))
-        .with(System::from(camera::control))
-        .with(System::from(physics::step))
-        .with(System::from(drone::control))
-        .with(System::from(beam::gravity))
+        .with(System::from(settings::ui_update).with(State::off::<Pause>()))
+        .with(System::from(settings::pause_menu).with(State::on::<Pause>()))
+        .with(System::from(camera::control).with(State::off::<Pause>()))
+        .with(System::from(physics::step).with(State::off::<Pause>()))
+        .with(System::from(drone::control).with(State::off::<Pause>()))
+        .with(System::from(beam::gravity).with(State::off::<Pause>()))
         .with(System::from(info_panel::update))
 
         .with(Service::from(rapier3d::dynamics::RigidBodySet::new()))

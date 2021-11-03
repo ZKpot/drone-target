@@ -1,9 +1,9 @@
-use super::{ drone::Stats, settings };
+use super::{ drone::Stats, settings, Pause };
 
 use dotrix::ecs::{ Const, Entity };
 use dotrix::services::{ World };
 use dotrix::overlay::Overlay;
-use dotrix::{ Frame, };
+use dotrix::{ Frame, State, };
 
 use dotrix::egui::{
     self,
@@ -15,6 +15,7 @@ pub fn update(
     overlay: Const<Overlay>,
     settings: Const<settings::Settings>,
     frame: Const<Frame>,
+    state: Const<State>,
 ) {
     let info_ui_frame = egui::containers::Frame{
         fill: egui::Color32::from_black_alpha(192),
@@ -34,6 +35,8 @@ pub fn update(
     // Query all drones to display their stats
     let query = world.query::<( &Entity, &Stats )>();
 
+    let paused = state.get::<Pause>().is_some();
+
     // draw info panel
     if settings.show_info_panel {
         egui::SidePanel::left("info_panel")
@@ -47,7 +50,7 @@ pub fn update(
                 });
 
             egui::ScrollArea::auto_sized()
-                .enable_scrolling(settings.paused)
+                .enable_scrolling(paused)
                 .show(ui, |ui|{
                     for (entity, stats) in query {
                         if stats.is_player {
@@ -69,7 +72,7 @@ pub fn update(
 
                         egui::CollapsingHeader::new(label)
                             .default_open(stats.is_player)
-                            .enabled(settings.paused)
+                            .enabled(paused)
                             .show(ui, |ui| {
 
                                 let glabel = format!("{:?} - grid", entity);
