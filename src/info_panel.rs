@@ -44,50 +44,68 @@ pub fn update(
             .frame(info_ui_frame)
             .show(&egui.ctx, |ui| {
                 egui::Grid::new("info_grid").show(ui, |ui| {
-                    ui.label("FPS");
-                    ui.label(format!("{:05.1}", frame.fps()));
+                    let color = if paused {
+                        egui::Color32::GRAY
+                    } else {
+                        egui::Color32::from_rgb(96, 96, 96)
+                    };
+                    ui.add(
+                        egui::Label::new("FPS")
+                            .text_color(color)
+                    );
+                    ui.add(
+                        egui::Label::new(format!("{:05.1}", frame.fps()))
+                            .text_color(color)
+                    );
                     ui.end_row();
+
+                    let states_stack_dump = state.dump().join(",\n  ");
+                    ui.add(
+                        egui::Label::new(
+                            format!("Current states stack: \n  {}\n", states_stack_dump)
+                            ).text_color(color)
+                    );
                 });
 
-            egui::ScrollArea::auto_sized()
-                .enable_scrolling(paused)
-                .show(ui, |ui|{
-                    for (entity, stats) in query {
-                        if stats.is_player {
-                            health        = stats.health as u8;
-                            charge        = stats.charge as u8;
-                            strike_charge = stats.strike_charge as u8;
-                        }
+                egui::ScrollArea::auto_sized()
+                    .enable_scrolling(paused)
+                    .show(ui, |ui|{
+                        for (entity, stats) in query {
+                            if stats.is_player {
+                                health        = stats.health as u8;
+                                charge        = stats.charge as u8;
+                                strike_charge = stats.strike_charge as u8;
+                            }
 
-                        let label = if stats.is_player{
-                            format!("{:?} - player", entity)
-                        } else {
-                            format!("{:?} - bot", entity)
-                        };
+                            let label = if stats.is_player{
+                                format!("{:?} - player", entity)
+                            } else {
+                                format!("{:?} - bot", entity)
+                            };
 
-                        // add label and value for each structure field
-                        let status = format!("{:?}", stats);
-                        let mut part: Vec<&str> = status.split(" { ").collect();
-                        part = part[1].split(" }").collect();
+                            // add label and value for each structure field
+                            let status = format!("{:?}", stats);
+                            let mut part: Vec<&str> = status.split(" { ").collect();
+                            part = part[1].split(" }").collect();
 
-                        egui::CollapsingHeader::new(label)
-                            .default_open(stats.is_player)
-                            .enabled(paused)
-                            .show(ui, |ui| {
+                            egui::CollapsingHeader::new(label)
+                                .default_open(stats.is_player)
+                                .enabled(paused)
+                                .show(ui, |ui| {
 
-                                let glabel = format!("{:?} - grid", entity);
-                                egui::Grid::new(glabel).show(ui, |ui| {
-                                    for s in part[0].split(", ") {
-                                        let s_part: Vec<&str> = s.split(": ").collect();
-                                        ui.label(format!("{}:", s_part[0]));
-                                        ui.label(s_part[1]);
-                                        ui.end_row();
-                                    }
+                                    let glabel = format!("{:?} - grid", entity);
+                                    egui::Grid::new(glabel).show(ui, |ui| {
+                                        for s in part[0].split(", ") {
+                                            let s_part: Vec<&str> = s.split(": ").collect();
+                                            ui.label(format!("{}:", s_part[0]));
+                                            ui.label(s_part[1]);
+                                            ui.end_row();
+                                        }
+                                    });
                                 });
-                            });
-                    }
+                        }
+                    });
             });
-        });
     }
 
     // draw the status bar

@@ -1,4 +1,4 @@
-use super::{ Action, Pause};
+use super::{ Action, Pause, Initialization};
 
 use dotrix::ecs::{ Mut, Const };
 use dotrix::{ Window, State};
@@ -29,7 +29,7 @@ impl Default for Settings {
 }
 
 pub fn startup(
-    mut window: Mut<Window>,
+    window: Const<Window>,
 ) {
     window.set_outer_position(
         Vec2i::new(
@@ -39,7 +39,11 @@ pub fn startup(
     );
 
     window.set_inner_size(Vec2u::new(1280, 720));
+}
 
+pub fn init(
+    mut window: Mut<Window>,
+) {
     window.set_cursor_grab(true);
     window.set_cursor_visible(false);
 }
@@ -111,6 +115,10 @@ pub fn pause_menu (
                     }
                 }
 
+                if ui.button("Reset the game").clicked() {
+                    state.push(Initialization {});
+                }
+
                 if ui.button("Exit").clicked() {
                     window.close();
                 }
@@ -118,13 +126,16 @@ pub fn pause_menu (
         )
     });
 
-    let mut paused = state.get_mut::<Pause>().expect("The system to be run in pause state");
+    match state.get_mut::<Pause>() {
+        None => {},
+        Some(paused) => {
+            if paused.handled & input.is_action_activated(Action::Menu) {
+                exit_pause = true;
+            }
 
-    if paused.handled & input.is_action_activated(Action::Menu) {
-        exit_pause = true;
+            paused.handled = true;
+        }
     }
-
-    paused.handled = true;
 
     if exit_pause {
         window.set_cursor_grab(true);
