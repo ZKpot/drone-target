@@ -36,6 +36,18 @@ struct Pause {
 struct Main {}
 struct Initialization {}
 
+// Services
+pub struct ToExile {
+    pub entity_list: Vec<Entity>,
+}
+
+impl Default for ToExile {
+    fn default() -> Self {
+        Self {
+            entity_list: Vec::new(),
+        }
+    }
+}
 
 fn main() {
     Dotrix::application("drone-target")
@@ -52,6 +64,8 @@ fn main() {
         .with(System::from(physics::step).with(State::on::<Main>()))
         .with(System::from(drone::control).with(State::on::<Main>()))
         .with(System::from(beam::gravity).with(State::on::<Main>()))
+        .with(System::from(drone::exile))
+        .with(System::from(exile))
         .with(System::from(info_panel::update))
 
         .with(Service::from(rapier3d::dynamics::RigidBodySet::new()))
@@ -61,6 +75,7 @@ fn main() {
         .with(Service::from(rapier3d::geometry::NarrowPhase::new()))
         .with(Service::from(rapier3d::dynamics::CCDSolver::new()))
         .with(Service::from(settings::Settings::default()))
+        .with(Service::from(ToExile::default()))
 
         .with(skybox::extension)
         .with(pbr::extension)
@@ -120,22 +135,15 @@ fn init_level(
     mut camera: Mut<Camera>,
     mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
     mut colliders: Mut<rapier3d::geometry::ColliderSet>,
-    mut joints: Mut<rapier3d::dynamics::JointSet>,
+    mut to_exile: Mut<ToExile>,
 ) {
     // despawn all drones
     let query = world.query::<(
-        &Entity, &rapier3d::dynamics::RigidBodyHandle, &drone::Stats
+        &Entity, &drone::Stats
     )>();
 
-    let mut to_exile = Vec::new();
-
-    for (entity, rigid_body, _) in query {
-        to_exile.push(*entity);
-        bodies.remove(*rigid_body, &mut colliders, &mut joints);
-    }
-
-    for entity in to_exile.into_iter() {
-        world.exile(entity);
+    for (entity, _) in query {
+        to_exile.entity_list.push(*entity);
     }
 
     init_camera(&mut camera);
@@ -249,6 +257,15 @@ fn init_light(world: &mut World) {
             enabled: true,
         },
     )));
+}
+
+fn exile(mut world: Mut<World>, mut to_exile: Mut<ToExile>) {
+
+    for i in 0..to_exile.entity_list.len() {
+        world.exile(to_exile.entity_list[i]);
+    }
+
+    to_exile.entity_list = Vec::new();
 }
 
 fn init_controls(input: &mut Input) {

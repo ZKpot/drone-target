@@ -1,4 +1,4 @@
-use super::{ Action, };
+use super::{ Action, ToExile};
 use super::settings;
 
 use rapier3d::{
@@ -59,20 +59,17 @@ const MAX_CHARGE:      f32 = 100.0;
 const VELO_MIN:        f32 = 10.0;
 
 pub fn control(
-    mut world: Mut<World>,
+    world: Const<World>,
     mut bodies: Mut<RigidBodySet>,
-    mut colliders: Mut<ColliderSet>,
-    mut joints: Mut<JointSet>,
     input: Const<Input>,
     mut camera: Mut<Camera>,
     settings: Const<settings::Settings>,
+    mut to_exile: Mut<ToExile>,
 ) {
     // Query drone entities
     let query = world.query::<(
-        &Entity ,&mut Transform, &mut RigidBodyHandle, &mut Stats
+        &Entity, &mut Transform, &mut RigidBodyHandle, &mut Stats
     )>();
-
-    let mut to_exile = Vec::new();
 
     for (entity, transform, rigid_body, stats) in query {
 
@@ -219,8 +216,7 @@ pub fn control(
 
         // despawn
         if stats.health <= 0.0 {
-            to_exile.push(*entity);
-            bodies.remove(*rigid_body, &mut colliders, &mut joints);
+            to_exile.entity_list.push(*entity);
         }
 
         // apply translation to the model
@@ -243,10 +239,6 @@ pub fn control(
             rot.into_inner().k,
             rot.into_inner().i,
         );
-    }
-
-    for entity in to_exile.into_iter() {
-        world.exile(entity);
     }
 }
 
@@ -291,4 +283,28 @@ pub fn spawn(
         Stats{ is_player, ..Default::default() },
         Pipeline::default(),
     )));
+}
+
+pub fn exile(
+    world: Const<World>,
+    to_exile: Const<ToExile>,
+    mut bodies: Mut<RigidBodySet>,
+    mut colliders: Mut<ColliderSet>,
+    mut joints: Mut<JointSet>,
+) {
+
+    // Query drone entities
+    let query = world.query::<(
+        &Entity, &mut RigidBodyHandle, &mut Stats
+    )>();
+
+    for (entity, rigid_body, _) in query {
+
+        for i in 0..to_exile.entity_list.len() {
+            if entity == &to_exile.entity_list[i] {
+                bodies.remove(*rigid_body, &mut colliders, &mut joints);
+                break;
+            }
+        }
+    }
 }
