@@ -72,37 +72,15 @@ fn main() {
 
 fn startup(
     mut state: Mut<State>,
+    mut world: Mut<World>,
     mut assets: Mut<Assets>,
+    mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
+    mut colliders: Mut<rapier3d::geometry::ColliderSet>,
     mut input: Mut<Input>,
 ) {
     input.set_mapper(Box::new(Mapper::<Action>::new()));
     load_assets(&mut assets);
     init_controls(&mut input);
-
-    state.push(Initialization {});
-}
-
-fn init_level(
-    mut state: Mut<State>,
-    mut world: Mut<World>,
-    mut assets: Mut<Assets>,
-    mut camera: Mut<Camera>,
-    mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
-    mut colliders: Mut<rapier3d::geometry::ColliderSet>,
-) {
-    // reset the world
-    println!("Initializing level...");
-    let mut to_exile = Vec::new();
-
-    let query = world.query::<( &Entity, )>();
-
-    for (entity, ) in query {
-        to_exile.push(*entity);
-    }
-
-    for entity in to_exile.into_iter() {
-        world.exile(entity);
-    }
 
     // Spawn skybox
     world.spawn(Some((
@@ -130,13 +108,43 @@ fn init_level(
         Point3::new(0.0, 0.0, 0.0),
     );
 
-    init_camera(&mut camera);
-
     init_light(&mut world);
+
+    state.push(Initialization {});
+}
+
+fn init_level(
+    mut state: Mut<State>,
+    mut world: Mut<World>,
+    mut assets: Mut<Assets>,
+    mut camera: Mut<Camera>,
+    mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
+    mut colliders: Mut<rapier3d::geometry::ColliderSet>,
+    mut joints: Mut<rapier3d::dynamics::JointSet>,
+) {
+    // despawn all drones
+    let query = world.query::<(
+        &Entity, &rapier3d::dynamics::RigidBodyHandle, &drone::Stats
+    )>();
+
+    let mut to_exile = Vec::new();
+
+    for (entity, rigid_body, _) in query {
+        to_exile.push(*entity);
+        bodies.remove(*rigid_body, &mut colliders, &mut joints);
+    }
+
+    for entity in to_exile.into_iter() {
+        world.exile(entity);
+    }
+
+    init_camera(&mut camera);
 
     init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
 
+    //Clear all states
     while state.pop_any().is_some() {};
+
     state.push(Main {});
 }
 

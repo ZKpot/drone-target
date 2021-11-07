@@ -2,7 +2,9 @@ use super::{ Action, };
 use super::settings;
 
 use rapier3d::{
-    dynamics::{ RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle, },
+    dynamics::{
+        RigidBodyBuilder, BodyStatus, RigidBodySet, RigidBodyHandle, JointSet,
+    },
     geometry::{ ColliderSet, ColliderBuilder, },
     na::{ Vector3, geometry::UnitQuaternion, },
     na,
@@ -59,6 +61,8 @@ const VELO_MIN:        f32 = 10.0;
 pub fn control(
     mut world: Mut<World>,
     mut bodies: Mut<RigidBodySet>,
+    mut colliders: Mut<ColliderSet>,
+    mut joints: Mut<JointSet>,
     input: Const<Input>,
     mut camera: Mut<Camera>,
     settings: Const<settings::Settings>,
@@ -216,6 +220,7 @@ pub fn control(
         // despawn
         if stats.health <= 0.0 {
             to_exile.push(*entity);
+            bodies.remove(*rigid_body, &mut colliders, &mut joints);
         }
 
         // apply translation to the model
@@ -243,7 +248,6 @@ pub fn control(
     for entity in to_exile.into_iter() {
         world.exile(entity);
     }
-
 }
 
 pub fn spawn(
