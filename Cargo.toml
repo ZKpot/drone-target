@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies.dotrix]
 git = "https://github.com/lowenware/dotrix"
-rev = "3c48c20ca6f9e1702f093a3198e3820256637824"
+rev = "0cf5335840b21e4d80ce0b62f64ef54903d28dd2"
 
 [dependencies.rapier3d]
 version = "0.7.2"

@@ -1,5 +1,3 @@
-use super::settings;
-
 use rapier3d:: {
     na::{ Vector3, },
     dynamics::{ CCDSolver, JointSet, RigidBodySet, IntegrationParameters, },
@@ -35,7 +33,6 @@ pub fn step(mut context: Context<Pipeline>,
     mut broad_phase: Mut<BroadPhase>,
     mut narrow_phase: Mut<NarrowPhase>,
     mut ccd_solver: Mut<CCDSolver>,
-    settings: Const<settings::Settings>,
     frame: Const<Frame>,
 ) {
 
@@ -44,21 +41,21 @@ pub fn step(mut context: Context<Pipeline>,
     let physics_hooks = ();
     let event_handler = ();
 
-    if !settings.paused {
 
-        integration_parameters.dt = 1.0 / frame.fps();
 
-        context.pipeline.step(
-            &gravity,
-            &integration_parameters,
-            &mut broad_phase,
-            &mut narrow_phase,
-            &mut bodies,
-            &mut colliders,
-            &mut joints,
-            &mut ccd_solver,
-            &physics_hooks,
-            &event_handler
-        );
-    };
+    integration_parameters.dt = 1.0 / frame.fps();
+
+    context.pipeline.step(
+        &gravity,
+        &integration_parameters,
+        &mut broad_phase,
+        &mut narrow_phase,
+        &mut bodies,
+        &mut colliders,
+        &mut joints,
+        &mut ccd_solver,
+        &physics_hooks,
+        &event_handler
+    );
+
 }

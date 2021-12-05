@@ -16,6 +16,7 @@ use dotrix::{
     Input,
     World,
     Pipeline,
+    State,
 
     egui, overlay,
 
@@ -24,19 +25,47 @@ use dotrix::{
     input::{ ActionMapper, Button, KeyCode, Mapper, },
     camera,
     math::{ Point3, Vec3 },
+    ecs::{ Entity, },
 };
+
+// States
+struct Pause {
+    handled: bool,
+}
+
+struct Main {}
+struct Initialization {}
+
+// Services
+pub struct ToExile {
+    pub entity_list: Vec<Entity>,
+}
+
+impl Default for ToExile {
+    fn default() -> Self {
+        Self {
+            entity_list: Vec::new(),
+        }
+    }
+}
 
 fn main() {
     Dotrix::application("drone-target")
         .with(System::from(startup))
         .with(System::from(settings::startup))
 
-        .with(System::from(settings::update))
-        .with(System::from(settings::menu))
-        .with(System::from(camera::control))
-        .with(System::from(physics::step))
-        .with(System::from(drone::control))
-        .with(System::from(beam::gravity))
+        .with(System::from(settings::init).with(State::on::<Initialization>()))
+        // init_level should be called the last as it pops init state
+        .with(System::from(init_level).with(State::on::<Initialization>()))
+
+        .with(System::from(settings::ui_update).with(State::off::<Pause>()))
+        .with(System::from(settings::pause_menu).with(State::on::<Pause>()))
+        .with(System::from(camera::control).with(State::on::<Main>()))
+        .with(System::from(physics::step).with(State::on::<Main>()))
+        .with(System::from(drone::control).with(State::on::<Main>()))
+        .with(System::from(beam::gravity).with(State::on::<Main>()))
+        .with(System::from(drone::exile))
+        .with(System::from(exile))
         .with(System::from(info_panel::update))
 
         .with(Service::from(rapier3d::dynamics::RigidBodySet::new()))
@@ -46,6 +75,7 @@ fn main() {
         .with(Service::from(rapier3d::geometry::NarrowPhase::new()))
         .with(Service::from(rapier3d::dynamics::CCDSolver::new()))
         .with(Service::from(settings::Settings::default()))
+        .with(Service::from(ToExile::default()))
 
         .with(skybox::extension)
         .with(pbr::extension)
@@ -56,41 +86,16 @@ fn main() {
 }
 
 fn startup(
+    mut state: Mut<State>,
     mut world: Mut<World>,
-    mut camera: Mut<Camera>,
     mut assets: Mut<Assets>,
     mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
     mut colliders: Mut<rapier3d::geometry::ColliderSet>,
     mut input: Mut<Input>,
 ) {
     input.set_mapper(Box::new(Mapper::<Action>::new()));
-    init_camera(&mut camera);
-    init_skybox(&mut world, &mut assets);
-    init_light(&mut world);
-    init_world(&mut world, &mut assets, &mut bodies, &mut colliders);
-    init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
+    load_assets(&mut assets);
     init_controls(&mut input);
-}
-
-fn init_camera(camera: &mut Camera) {
-    camera.y_angle = 0.0;
-    camera.xz_angle = 0.0;
-    camera.target = Point3::new(0.0, 2.0, 0.0);
-    camera.distance = 10.0;
-}
-
-fn init_skybox(
-    world: &mut World,
-    assets: &mut Assets,
-) {
-    // The skybox cubemap was downloaded from https://opengameart.org/content/elyvisions-skyboxes
-    // These files were licensed as CC-BY 3.0 Unported on 2012/11/7
-    assets.import("assets/skybox/skybox_right.png");
-    assets.import("assets/skybox/skybox_left.png");
-    assets.import("assets/skybox/skybox_top.png");
-    assets.import("assets/skybox/skybox_bottom.png");
-    assets.import("assets/skybox/skybox_front.png");
-    assets.import("assets/skybox/skybox_back.png");
 
     // Spawn skybox
     world.spawn(Some((
@@ -109,23 +114,69 @@ fn init_skybox(
         },
         Pipeline::default()
     )));
-}
-
-fn init_world(
-    world: &mut World,
-    assets: &mut Assets,
-    bodies: &mut rapier3d::dynamics::RigidBodySet,
-    colliders: &mut rapier3d::geometry::ColliderSet,
-) {
-    assets.import("assets/energy_beam/energy_beam.gltf");
 
     beam::spawn(
-        world,
-        assets,
-        bodies,
-        colliders,
+        &mut world,
+        &mut assets,
+        &mut bodies,
+        &mut colliders,
         Point3::new(0.0, 0.0, 0.0),
     );
+
+    init_light(&mut world);
+
+    state.push(Initialization {});
+}
+
+fn init_level(
+    mut state: Mut<State>,
+    mut world: Mut<World>,
+    mut assets: Mut<Assets>,
+    mut camera: Mut<Camera>,
+    mut bodies: Mut<rapier3d::dynamics::RigidBodySet>,
+    mut colliders: Mut<rapier3d::geometry::ColliderSet>,
+    mut to_exile: Mut<ToExile>,
+) {
+    // despawn all drones
+    let query = world.query::<(
+        &Entity, &drone::Stats
+    )>();
+
+    for (entity, _) in query {
+        to_exile.entity_list.push(*entity);
+    }
+
+    init_camera(&mut camera);
+
+    init_drones(&mut world, &mut assets, &mut bodies, &mut colliders);
+
+    //Clear all states
+    while state.pop_any().is_some() {};
+
+    state.push(Main {});
+}
+
+fn init_camera(camera: &mut Camera) {
+    camera.y_angle = 0.0;
+    camera.xz_angle = 0.0;
+    camera.target = Point3::new(0.0, 2.0, 0.0);
+    camera.distance = 10.0;
+}
+
+fn load_assets(
+    assets: &mut Assets,
+) {
+    // The skybox cubemap was downloaded from https://opengameart.org/content/elyvisions-skyboxes
+    // These files were licensed as CC-BY 3.0 Unported on 2012/11/7
+    assets.import("assets/skybox/skybox_right.png");
+    assets.import("assets/skybox/skybox_left.png");
+    assets.import("assets/skybox/skybox_top.png");
+    assets.import("assets/skybox/skybox_bottom.png");
+    assets.import("assets/skybox/skybox_front.png");
+    assets.import("assets/skybox/skybox_back.png");
+
+    assets.import("assets/energy_beam/energy_beam.gltf");
+    assets.import("assets/drone/drone.gltf");
 }
 
 fn init_drones(
@@ -134,8 +185,6 @@ fn init_drones(
     bodies: &mut rapier3d::dynamics::RigidBodySet,
     colliders: &mut rapier3d::geometry::ColliderSet,
 ) {
-    assets.import("assets/drone/drone.gltf");
-
     drone::spawn(
         world,
         assets,
@@ -208,6 +257,15 @@ fn init_light(world: &mut World) {
             enabled: true,
         },
     )));
+}
+
+fn exile(mut world: Mut<World>, mut to_exile: Mut<ToExile>) {
+
+    for i in 0..to_exile.entity_list.len() {
+        world.exile(to_exile.entity_list[i]);
+    }
+
+    to_exile.entity_list = Vec::new();
 }
 
 fn init_controls(input: &mut Input) {
